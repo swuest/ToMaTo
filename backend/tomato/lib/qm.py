@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-import re, uuid, time
+import re, uuid, time, simplejson
 
 from tomato import config, generic
 from tomato.lib import util
@@ -30,6 +30,11 @@ def _qm(host, vmid, cmd, params=[]):
 def _monitor(host, vmid, cmd, timeout=60):
 	assert getState(host, vmid) == generic.State.STARTED, "VM must be running to access monitor"
 	return host.execute("echo -e %(cmd)s'\n' | socat -T %(timeout)d - unix-connect:/var/run/qemu-server/%(vmid)d.mon; socat -T %(timeout)d -u unix-connect:/var/run/qemu-server/%(vmid)d.mon - 2>&1 | dd count=0 2>/dev/null; echo" % {"cmd": util.escape(cmd), "vmid": vmid, "timeout": timeout})
+
+def _qmp(host, vmid, cmds, timeout=60):
+	assert getState(host, vmid) == generic.State.STARTED, "VM must be running to access monitor"
+	cmd = "".join([util.escape(simplejson.dumps(cmd))+"'\n'" for cmd in cmds])
+	return host.execute("echo -e %(cmd)s'\n' | socat -T %(timeout)d - unix-connect:/var/run/qemu-server/%(vmid)d.qmp; socat -T %(timeout)d -u unix-connect:/var/run/qemu-server/%(vmid)d.qmp - 2>&1 | dd count=0 2>/dev/null; echo" % {"cmd": cmd, "vmid": vmid, "timeout": timeout})
 
 def _imagePathDir(vmid):
 	return "/var/lib/vz/images/%d" % vmid
@@ -52,13 +57,18 @@ def sendKeys(host, vmid, keycodes):
 
 def getState(host, vmid):
 	assert vmid
-	res = _qm(host, vmid, "status")
-	if "running" in res:
-		return generic.State.STARTED
-	if "stopped" in res:
-		return generic.State.PREPARED
-	if "unknown" in res:
-		return generic.State.CREATED
+	try:
+		res = _qm(host, vmid, "status")
+		if "running" in res:
+			return generic.State.STARTED
+		if "stopped" in res:
+			return generic.State.PREPARED
+		if "unknown" in res: #proxmox 1.8
+			return generic.State.CREATED
+	except exceptions.CommandError, exc:
+		if exc.errorCode == 2: #proxmox 2.0
+			return generic.State.CREATED
+		raise  
 	assert False, "Unable to determine kvm state"
 
 def useImage(host, vmid, image, move=False):
@@ -70,7 +80,10 @@ def useImage(host, vmid, image, move=False):
 		if not exc.errorCode in [1]:
 			raise  
 	assert getState(host, vmid) == generic.State.PREPARED, "VM must be stopped to change image"
-	_qm(host, vmid, "set", ["--ide0", "undef"])
+	try:
+		_qm(host, vmid, "set", ["--ide0", "undef"]) #proxmox 1.8
+	except exceptions.CommandError, exc:
+		_qm(host, vmid, "set", ["--delete", "ide0", "--force"]) #proxmox 2.0
 	imagePath = _imagePath(vmid)
 	fileutil.mkdir(host, _imagePathDir(vmid))
 	if move:
@@ -90,7 +103,13 @@ def vncRunning(host, vmid, port):
 def startVnc(host, vmid, port, password):
 	assert getState(host, vmid) == generic.State.STARTED, "VM must be running to start vnc"
 	assert process.portFree(host, port)
-	host.execute("tcpserver -qHRl 0 0 %d qm vncproxy %d %s & echo $! > %s" % ( port, vmid, util.escape(password), _vncPidfile(vmid) ))
+	if fileutil.existsSocket(host, "/var/run/qemu-server/%d.qmp" % vmid): #proxmox 2.0
+		print "new qm"
+		_qmp(host, vmid, [{'execute': 'qmp_capabilities'}, {'execute': 'set_password', 'arguments': {"protocol": "vnc", "password": password}}])
+		host.execute("tcpserver -qHRl 0 0 %d qm vncproxy %d & echo $! > %s" % (port, vmid, _vncPidfile(vmid)))
+	else:
+		print host.execute("ls -l /var/run/qemu-server")
+		host.execute("tcpserver -qHRl 0 0 %d qm vncproxy %d %s & echo $! > %s" % (port, vmid, util.escape(password), _vncPidfile(vmid)))
 	assert not process.portFree(host, port)
 
 def stopVnc(host, vmid, port):
@@ -115,7 +134,7 @@ def checkImage(host, path):
 	
 def setName(host, vmid, name):
 	assert getState(host, vmid) != generic.State.CREATED, "VM must exist to change the name"
-	_qm(host, vmid, "set", ["--name", util.identifier(name)])
+	_qm(host, vmid, "set", ["--name", util.identifier(name).replace("_", "-")]) #prevent error: invalid format - value does not look like a valid DNS name
 
 def addInterface(host, vmid, iface):
 	assert getState(host, vmid) == generic.State.PREPARED, "VM must be stopped to add interfaces"
@@ -124,12 +143,18 @@ def addInterface(host, vmid, iface):
 	# if this bridge does not exist, kvm start fails
 	if not ifaceutil.interfaceExists(host, "vmbr%d" % iface_id):
 		ifaceutil.bridgeCreate(host, "vmbr%d" % iface_id)
-	_qm(host, vmid, "set", ["--vlan%d" % iface_id, "e1000"])					
+	try:
+		_qm(host, vmid, "set", ["--vlan%d" % iface_id, "e1000"]) #proxmox 1.8
+	except exceptions.CommandError, err:
+		_qm(host, vmid, "set", ["--net%d" % iface_id, "e1000,bridge=dummy"]) #promxox 2.0
 	
 def deleteInterface(host, vmid, iface):
 	assert getState(host, vmid) == generic.State.PREPARED, "VM must be stopped to remove interfaces"
 	iface_id = int(re.match("eth(\d+)", iface).group(1))
-	_qm(host, vmid, "set", ["--vlan%d" % iface_id, "undef"])			
+	try:
+		_qm(host, vmid, "set", ["--vlan%d" % iface_id, "undef"]) #proxmox 1.8			
+	except exceptions.CommandError, err:
+		_qm(host, vmid, "set", ["--delete", "--net%d" % iface_id]) #proxmox 2.0			
 		
 def copyImage(host, vmid, file):
 	assert getState(host, vmid) != generic.State.CREATED, "VM must be prepared"
@@ -160,7 +185,7 @@ def interfaceDevice(host, vmid, iface, failSilent=False):
 	qemu-server 1.1-22 vmtab1000i0 
 	qemu-server 1.1-25 vmtab1000i0d0
 	qemu-server 1.1-28 tap1000i0d0 or tap1000i0
-	Due to this naming chaos the name must determined on the host with a
+	Due to this naming chaos the name must be determined on the host with a
 	command, so	this can only be determined for started devices.
 		
 	@param iface: interface object
@@ -185,6 +210,7 @@ def create(host, vmid):
 @decorators.retryOnError(errorFilter=lambda x: isinstance(x, exceptions.CommandError) and "unable to create fairsched node - still in use" in x.errorMessage, waitBetween=10.0)
 def start(host, vmid):
 	assert getState(host, vmid) == generic.State.PREPARED, "VM already running"
+	ifaceutil.bridgeCreate(host, "dummy") #workaround for proxmox 2.0
 	res = _qm(host, vmid, "start")
 	assert getState(host, vmid) == generic.State.STARTED, "Failed to start VM: %s" % res
 

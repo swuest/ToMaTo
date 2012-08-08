@@ -25,7 +25,7 @@ import process, fileutil, ifaceutil, util, exceptions, decorators
 def _vzctl(host, vmid, cmd, params=[], timeout=None):
 	cmd = "vzctl %s %d %s" % (util.escape(cmd), vmid, " ".join(map(util.escape, params)))
 	if timeout:
-		cmd = ("timeout -9 %d " % timeout) + cmd 
+		cmd = ("perl -e 'alarm %d; exec @ARGV' " % timeout) + cmd 
 	return host.execute(cmd)
 
 def execute(host, vmid, cmd):
@@ -67,14 +67,17 @@ def stopVnc(host, vmid, port):
 def _templatePath(name):
 	return "/var/lib/vz/template/cache/%s.tar.gz" % name
 
+def _privatePath(id):
+	return "/var/lib/vz/private/%d" % id
+
 def create(host, vmid, template):
 	assert getState(host, vmid) == generic.State.CREATED, "VM already exists"
 	try:
-		res = _vzctl(host, vmid, "create", ["--ostemplate", template])
+		res = _vzctl(host, vmid, "create", ["--ostemplate", template, "--config", "default"])
 	except exceptions.CommandError, exc:
 		if exc.errorCode == 44: #Warning: CT config file already exists, not applying a default config sample.
 			destroy(host, vmid)
-			res = _vzctl(host, vmid, "create", ["--ostemplate", template, "--applyconfig"])
+			res = _vzctl(host, vmid, "create", ["--ostemplate", template, "--config", "default"])
 		else:
 			raise
 	assert getState(host, vmid) == generic.State.PREPARED, "Failed to create VM: %s" % res
@@ -100,6 +103,8 @@ def destroy(host, vmid):
 		res = _vzctl(host, vmid, "destroy")
 	except exceptions.CommandError, err:
 		if err.errorCode == 14: #[14] Container config file does not exist
+			if fileutil.existsDir(host, _privatePath(vmid)):
+				fileutil.delete(host, _privatePath(vmid), True)
 			return
 		raise
 	assert getState(host, vmid) == generic.State.CREATED, "Failed to destroy VM: %s" % res

@@ -1,3 +1,9 @@
+tomato-host (0.20) stable; urgency=low
+
+  * Removed timeout dependency
+
+ -- Dennis Schwerdel <schwerdel@informatik.uni-kl.de>  Tue, 07 Aug 2012 16:44:26 +0200
+
 tomato-host (0.19) stable; urgency=low
 
   * Depending on tomato-repy >=0.5

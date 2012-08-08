@@ -15,6 +15,7 @@ function upload () {
 
 upload hostserver lenny
 upload meta lenny
+upload meta squeeze
 upload repy lenny
 upload backend squeeze
 upload web squeeze
