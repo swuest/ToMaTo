@@ -238,6 +238,46 @@ class VMElement(elements.Element):
 		self.custom_template = True
 		self.save()
 
+	def checkMigrate(self):
+		#We only migrate if element is prepared
+		if self.state in ["prepared"]:
+			return True
+		return False
+	
+	def action_migrate(self,host):
+		if self.checkMigrate(self):
+			
+			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
+			
+			
+			
+			
+			attrs = self._remoteAttrs()
+			attrs.update({
+				"template": self._template().name,
+			})
+			attrs.update(self._profileAttrs())
+			
+			#Create identical element on new host
+			new_el = host.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
+			
+			
+			#Neues element soll template uploaden (action_grant_upload)
+			#Neues element soll template nutzen (action_grant_upload_use)
+			
+			#Kill old element on old host
+			self.element.action("destroy")
+			
+			#Set new element and save it
+			self.element = new_el
+			self.save()
+			for iface in self.getChildren():
+				iface._create()
+			self.element.action("prepare")
+			self.element.action("")
+			self.setState(ST_PREPARED, True)
+			
+
 	def upcast(self):
 		return self
 

@@ -23,6 +23,7 @@ from lib.cache import cached  # @UnresolvedImport
 from lib.error import TransportError, InternalError, UserError, Error
 from .lib import anyjson as json
 from auth import Flags
+from .elements import Element
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
 
@@ -1006,6 +1007,64 @@ def create(name, site, attrs=None):
 	host.save()
 	logging.logMessage("create", category="host", info=host.info())
 	return host
+
+
+def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
+	if not sitePrefs: sitePrefs = {}
+	if not hostPrefs: hostPrefs = {}
+	if not networkKinds: networkKinds = []
+	if not connectionTypes: connectionTypes = []
+	if not elementTypes: elementTypes = []
+	pref = 0.0
+	pref -= host.componentErrors * 25  # discourage hosts with previous errors
+	pref -= host.getLoad() * 100  # up to -100 points for load
+	if host in hostPrefs:
+		pref += hostPrefs[host]
+	if host.site in sitePrefs:
+		pref += sitePrefs[host.site]
+	return pref
+
+def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
+	if not sitePrefs: sitePrefs = {}
+	if not hostPrefs: hostPrefs = {}
+	if not networkKinds: networkKinds = []
+	if not connectionTypes: connectionTypes = []
+	if not elementTypes: elementTypes = []
+	all_ = Host.getAll(site=site) if site else Host.getAll()
+	hosts = []
+	for host in all_:
+		if host.problems():
+			continue
+		if set(elementTypes) - set(host.elementTypes.keys()):
+			continue
+		if set(connectionTypes) - set(host.connectionTypes.keys()):
+			continue
+		if set(networkKinds) - set(host.getNetworkKinds()):
+			continue
+		hosts.append(host)
+	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
+	prefs = dict([(h, getHostValue(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
+	hosts.sort(key=lambda h: prefs[h], reverse=True)
+	return hosts[0], prefs[hosts[0]]
+	
+def reallocate():
+
+	#needs to be redifined at a better place
+	THRESHOLD = 20
+	#Walk through all elements and think about reallocating them.
+	for el in Element:
+		if el.activ:
+			continue
+		hostPref, sitePref = el.getLocationPrefs()
+		prev,prevScor = getHostValue(el.host,el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		best,bestScor = getHostValue(el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		
+		#Compare best host with preference host and migrate to better one if possible
+		if prev != best:
+			if bestScor - prevScor > THRESHOLD:
+				if el.canMigrate():
+					el.migrate(best)
+				
 
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
