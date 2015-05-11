@@ -14,14 +14,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
-import rpc, urllib
 from django.db import models
 from .. import elements, resources, host
 from ..resources import profile as r_profile, template as r_template
 from ..lib.attributes import Attr, attribute #@UnresolvedImport
-from ..lib import attributes #@UnresolvedImport
+from ..lib import attributes,rpc #@UnresolvedImport
 from ..lib.error import UserError, InternalError
 import time
+import urllib
 
 ST_CREATED = "created"
 ST_PREPARED = "prepared"
