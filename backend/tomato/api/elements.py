@@ -299,6 +299,29 @@ def element_usage(id): #@ReservedAssignment
 	el = _getElement(id)
 	return el.totalUsage.info()	
 
+def element_migrate(id,hst): #@ReservedAssignment
+	"""
+	Migrates an element to a new host
+	
+	
+	Parameter *id*:
+	  The parameter *id* identifies the element by giving its unique id.
+	  
+	Parameter *host*:
+	  The parameter *host* identifies the new host by giving its unique id.
+	  
+	Return value:
+	  Returns the host name to confirm the 
+	
+	"""
+	from host import _getHost
+	
+	el = _getElement(id)
+	ho = _getHost(hst)
+	el.migrate(ho)
+	return el.info()
+	
+
 from .. import elements, currentUser
 from topology import _getTopology
 from ..lib.error import UserError
