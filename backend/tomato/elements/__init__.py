@@ -27,6 +27,7 @@ from ..accounting import UsageStatistics
 from ..lib.decorators import *
 from ..lib.cache import cached #@UnresolvedImport
 from ..lib.error import UserError, InternalError
+from builtins import True
 
 TYPES = {}
 REMOVE_ACTION = "(remove)"
@@ -468,6 +469,8 @@ class Element(PermissionMixin, db.ChangesetMixin, db.ReloadMixin, attributes.Mix
 		mel = self.mainElement()
 		if mel:
 			mel.updateInfo()
+			
+			
 
 	def updateUsage(self):
 		self.totalUsage.updateFrom([el.usageStatistics for el in self.getHostElements()]
