@@ -245,7 +245,7 @@ class VMElement(elements.Element):
 		return False
 	
 	def action_migrate(self,host):
-		if self.checkMigrate(self) and self.element.host.name != host:
+		if self.checkMigrate() and self.element.host.name != host:
 			
 			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
 			
