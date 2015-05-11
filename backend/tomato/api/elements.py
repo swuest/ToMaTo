@@ -318,7 +318,7 @@ def element_migrate(id,hst): #@ReservedAssignment
 	
 	el = _getElement(id)
 	ho = _getHost(hst)
-	el.migrate(ho)
+	el.action_migrate(ho)
 	return el.info()
 	
 
