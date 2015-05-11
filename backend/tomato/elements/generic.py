@@ -250,8 +250,12 @@ class VMElement(elements.Element):
 			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
 			
 			
+			print('Host gefunden \n')
 			#Download template. Receive download_grant from template and save it to a tempfile?
 			urllib.urlretrieve(self.element.action("download_grant"), "tmp_image.tar.gz")
+			
+			
+			print('Download erfolgreich \n')
 			
 			attrs = self._remoteAttrs()
 			attrs.update({
@@ -259,14 +263,18 @@ class VMElement(elements.Element):
 			})
 			attrs.update(self._profileAttrs())
 			
+			print('Erzeuge Element auf neuem host \n')
+			
 			#Create identical element on new host
 			new_el = host.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
 			
+			print('Lade template hoch \n')
 			
 			upload(new_el.action("upload_grant)"),"tmp_image.tar.gz")
 			new_el.action("upload_use")
 			
 			
+			print('Zerstöre altes Element \n')
 			#Kill old element on old host
 			self.element.action("destroy")
 			
