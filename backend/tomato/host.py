@@ -23,7 +23,6 @@ from lib.cache import cached  # @UnresolvedImport
 from lib.error import TransportError, InternalError, UserError, Error
 from .lib import anyjson as json
 from auth import Flags
-from .elements import Element
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
 
