@@ -27,7 +27,6 @@ from ..accounting import UsageStatistics
 from ..lib.decorators import *
 from ..lib.cache import cached #@UnresolvedImport
 from ..lib.error import UserError, InternalError
-from builtins import True
 
 TYPES = {}
 REMOVE_ACTION = "(remove)"
