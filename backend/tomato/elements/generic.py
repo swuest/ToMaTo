@@ -244,16 +244,16 @@ class VMElement(elements.Element):
 			return True
 		return False
 	
-	def action_migrate(self,host):
+	def action_migrate(self,hst):
 		if self.checkMigrate() and self.element.host.name != host:
 			
-			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
+			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
 			
 			
 			print('Host gefunden \n')
 			
 			
-			tmp = self.host.HostElement.action("download_grant")
+			tmp = host.HostElement.action("download_grant")
 			
 			print(tmp)
 			#Download template. Receive download_grant from template and save it to a tempfile?
@@ -271,7 +271,7 @@ class VMElement(elements.Element):
 			print('Erzeuge Element auf neuem host \n')
 			
 			#Create identical element on new host
-			new_el = host.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
+			new_el = hst.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
 			
 			print('Lade template hoch \n')
 			
