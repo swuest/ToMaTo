@@ -253,7 +253,7 @@ class VMElement(elements.Element):
 			print('Host gefunden \n')
 			
 			
-			tmp = host.HostElement.action("download_grant")
+			tmp = self.host.HostElement.action("download_grant")
 			
 			print(tmp)
 			#Download template. Receive download_grant from template and save it to a tempfile?
