@@ -251,7 +251,7 @@ class VMElement(elements.Element):
 			
 			
 			#Download template. Receive download_grant from template and save it to a tempfile?
-			urllib.urlretrieve(self.element.action("download_grant"), "/tmp_image.tar.gz")
+			urllib.urlretrieve(self.element.action("download_grant"), "tmp_image.tar.gz")
 			
 			attrs = self._remoteAttrs()
 			attrs.update({
@@ -263,7 +263,7 @@ class VMElement(elements.Element):
 			new_el = host.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
 			
 			
-			upload(new_el.action("upload_grant)"),"/tmp_image.tar.gz")
+			upload(new_el.action("upload_grant)"),"tmp_image.tar.gz")
 			new_el.action("upload_use")
 			
 			
