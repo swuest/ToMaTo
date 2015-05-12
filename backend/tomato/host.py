@@ -1069,7 +1069,8 @@ def reallocate():
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
 	
 	host, prefs = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-	logging.logMessage("select", category="host", host.name,
+	
+	logging.logMessage("select", category="host", result=host.name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
 					   site=site.name if site else None, element_types=elementTypes, connection_types=connectionTypes,
 					   network_types=networkKinds,
