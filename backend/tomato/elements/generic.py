@@ -273,10 +273,7 @@ class VMElement(elements.Element):
 			#Create identical element on new host
 			new_el = hst.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
 			
-			print('Lade template hoch \n')
-			
-			upload(new_el.action("upload_grant"),"tmp_image.tar.gz")
-			new_el.action("upload_use")
+		
 			
 			
 			print('Zerstöre altes Element \n')
@@ -289,8 +286,13 @@ class VMElement(elements.Element):
 			for iface in self.getChildren():
 				iface._create()
 			self.element.action("prepare")
-			self.element.action("")
+			
 			self.setState(ST_PREPARED, True)
+			
+			print('Lade template hoch \n')
+			
+			upload(new_el.action("upload_grant"),"tmp_image.tar.gz")
+			new_el.action("upload_use")
 			
 
 	
