@@ -1071,6 +1071,11 @@ def reallocate():
 
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
+	if not sitePrefs: sitePrefs = {}
+	if not hostPrefs: hostPrefs = {}
+	if not networkKinds: networkKinds = []
+	if not connectionTypes: connectionTypes = []
+	if not elementTypes: elementTypes = []
 	
 	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
