@@ -1066,7 +1066,7 @@ def reallocate():
 		if prev != best:
 			if bestScor - prevScor > THRESHOLD:
 				if el.canMigrate():
-					el.migrate(best)
+					el.action("migrate",best)
 				
 
 
