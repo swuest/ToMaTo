@@ -275,7 +275,7 @@ class VMElement(elements.Element):
 			
 			print('Lade template hoch \n')
 			
-			upload(new_el.action("upload_grant)"),"tmp_image.tar.gz")
+			upload(new_el.action("upload_grant"),"tmp_image.tar.gz")
 			new_el.action("upload_use")
 			
 			
