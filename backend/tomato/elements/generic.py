@@ -245,7 +245,7 @@ class VMElement(elements.Element):
 		return False
 	
 	def action_migrate(self,hst):
-		if self.checkMigrate() and self.element.host.name != host:
+		if self.checkMigrate() and self.element.host.name != hst:
 			
 			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
 			
@@ -253,7 +253,7 @@ class VMElement(elements.Element):
 			print('Host gefunden \n')
 			
 			
-			tmp = host.HostElement.action(host.HostElement,"download_grant")
+			tmp = self.action("download_grant")
 			
 			print(tmp)
 			#Download template. Receive download_grant from template and save it to a tempfile?
