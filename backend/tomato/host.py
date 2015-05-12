@@ -24,7 +24,6 @@ from lib.error import TransportError, InternalError, UserError, Error
 from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
-import elements
 import time, hashlib, threading, datetime, zlib, base64, sys
 
 class RemoteWrapper:
@@ -1048,6 +1047,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	return hosts[0], prefs[hosts[0]]
 	
 def reallocate():
+	import elements
 	#needs to be redefined at a better place
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
