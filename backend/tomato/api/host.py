@@ -179,6 +179,10 @@ def host_remove(name):
 	host_list.invalidate()
 
 @checkauth
+def host_reallokat():
+	host.reallocate()
+
+@checkauth
 def host_users(name):
 	"""
 	undocumented
