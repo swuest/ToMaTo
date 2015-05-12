@@ -341,19 +341,20 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		self.setState(ST_PREPARED, True)
 		
 	def checkMigrate(self):		
-		if self.state in [ST_PREPARED]:
+		if self.state in [ST_STARTED]:
 			return True
 		return False
 		
 	def action_migrate(self,hst):
 		if self.checkMigrate():
+			self.element("stop")
+			self.element.action("destroy")
 			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 			attrs = self._remoteAttrs()
 			attrs.update({
 				"mode": self.mode,
 				"peers": self.peers,
 			})
-			self.element.action("destroy")
 			self.element = hst.createElement(self.remoteType(), parent=None, attrs=attrs, ownerElement=self)
 			self.save()
 			self.setState(ST_PREPARED, True)	
