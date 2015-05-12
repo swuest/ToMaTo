@@ -20,6 +20,7 @@ from .. import elements, host
 from ..lib.attributes import Attr #@UnresolvedImport
 from generic import ST_CREATED, ST_PREPARED, ST_STARTED
 from ..lib.error import UserError
+from builtins import True
 
 class UDP_Endpoint(elements.Element):
 	element = models.ForeignKey(host.HostElement, null=True, on_delete=models.SET_NULL)
@@ -110,6 +111,23 @@ class UDP_Endpoint(elements.Element):
 		if self.element:
 			self.element.action("stop")
 		self.setState(ST_PREPARED, True)
+
+	def checkMigrate(self):
+		if self.state in [ST_PREPARED]:
+			return True
+		return False
+
+	def action_migrate(self,hst):
+		if self.checkMigrate():
+			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+			attrs = self._remoteAttrs()
+			attrs.update({
+				"connect": self.connect,
+			})
+			self.element.action("destroy")
+			self.element = hst.createElement(self.remoteType(), parent=None, attrs=attrs, ownerElement=self)
+			self.save()
+			self.setState(ST_PREPARED, True)
 
 	def upcast(self):
 		return self

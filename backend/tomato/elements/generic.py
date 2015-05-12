@@ -239,8 +239,8 @@ class VMElement(elements.Element):
 		self.save()
 
 	def checkMigrate(self):
-		#We only migrate if element is prepared
-		if self.state in ["prepared"]:
+		#We only migrate if the element is prepared
+		if self.state in [ST_PREPARED]:
 			return True
 		return False
 	
@@ -249,18 +249,10 @@ class VMElement(elements.Element):
 			
 			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
 			
-			
-			print('Host gefunden \n')
-			
-			
-			#tmp = self.action("download_grant")
-			
-			#print(tmp)
+		
 			#Download template. Receive download_grant from template and save it to a tempfile?
 			urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), "tmp_image.tar.gz")
 			
-			
-			print('Download erfolgreich \n')
 			
 			attrs = self._remoteAttrs()
 			attrs.update({
@@ -268,15 +260,10 @@ class VMElement(elements.Element):
 			})
 			attrs.update(self._profileAttrs())
 			
-			print('Erzeuge Element auf neuem host \n')
 			
 			#Create identical element on new host
 			new_el = hst.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
-			
-		
-			
-			
-			print('Zerstöre altes Element \n')
+
 			#Kill old element on old host
 			self.element.action("destroy")
 			
@@ -288,8 +275,6 @@ class VMElement(elements.Element):
 			self.element.action("prepare")
 			
 			self.setState(ST_PREPARED, True)
-			
-			print('Lade template hoch \n')
 			
 			upload(hst.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
 			new_el.action("upload_use")

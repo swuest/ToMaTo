@@ -149,7 +149,7 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 	def mainElement(self):
 		return self.element
 	
-	def modify_name(self, val):
+	def modify_name(self, val):_host = host.select(elementTypes=["external_network"], networkKinds=[kind], hostPrefs=hPref, sitePrefs=sPref)
 		self.name = val
 
 	def modify_kind(self, val):
@@ -191,6 +191,29 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 			self.element.remove()
 			self.element = None
 		self.setState(ST_CREATED, True)
+
+	def checkMigrate(self):
+		#We only migrate if the external network is already started, otherwise we don't have to migrate
+		if self.state in [ST_STARTED]:
+			return True
+		return False
+	
+	def action_migrate(self,hst):
+		if checkMigrate():
+			kind = self.getParent().network.kind if self.parent and self.getParent().samenet else self.kind
+			
+			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",
+				data={"type": self.TYPE})
+			if self.parent and self.getParent().samenet:
+				self.network = r_network.getInstance(hst, self.getParent().network.kind)
+			else:
+				self.network = r_network.getInstance(hst, self.kind)			
+			attrs = {"network": self.network.network.kind}
+			self.element.action("destroy")
+			self.element = hst.createElement("external_network", parent=None, attrs=attrs, ownerElement=self)
+			self.setState(ST_STARTED)
+			self.triggerConnectionStart()
+		
 
 	def readyToConnect(self):
 		return bool(self.element)
