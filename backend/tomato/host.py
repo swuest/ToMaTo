@@ -1036,7 +1036,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			continue
 		if set(elementTypes) - set(host.elementTypes.keys()):
 			continue
-		if set(connectionTypes) - set(host.connectio	.keys()):
+		if set(connectionTypes) - set(host.connectionTypes.keys()):
 			continue
 		if set(networkKinds) - set(host.getNetworkKinds()):
 			continue
