@@ -200,10 +200,10 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 		return False
 	
 	def action_migrate(self,hst):
-		if checkMigrate():
+		if self.checkMigrate():
 			kind = self.getParent().network.kind if self.parent and self.getParent().samenet else self.kind
 			
-			UserError.check(host, code=UserError.NO_RESOURCES, message="No matching host found for element",
+			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",
 				data={"type": self.TYPE})
 			if self.parent and self.getParent().samenet:
 				self.network = r_network.getInstance(hst, self.getParent().network.kind)
