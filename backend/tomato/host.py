@@ -1029,7 +1029,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	if not networkKinds: networkKinds = []
 	if not connectionTypes: connectionTypes = []
 	if not elementTypes: elementTypes = []
-	all_ = Host.getAll(site=site) if site else Host.getAll()
+	all_ = getAll(site=site) if site else getAll()
 	hosts = []
 	for host in all_:
 		if host.problems():
