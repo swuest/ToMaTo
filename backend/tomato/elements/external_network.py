@@ -149,7 +149,7 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 	def mainElement(self):
 		return self.element
 	
-	def modify_name(self, val):_host = host.select(elementTypes=["external_network"], networkKinds=[kind], hostPrefs=hPref, sitePrefs=sPref)
+	def modify_name(self, val):
 		self.name = val
 
 	def modify_kind(self, val):
