@@ -1023,7 +1023,7 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 		pref += sitePrefs[host.site]
 	return pref
 
-def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
+def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
 	if not sitePrefs: sitePrefs = {}
 	if not hostPrefs: hostPrefs = {}
 	if not networkKinds: networkKinds = []
@@ -1043,6 +1043,10 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 		hosts.append(host)
 	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
 	prefs = dict([(h, getHostValue(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
+	return hosts, prefs
+
+def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
+	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 	hosts.sort(key=lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
 	
@@ -1068,8 +1072,9 @@ def reallocate():
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
 	
-	host, prefs = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-	
+	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+
 	logging.logMessage("select", category="host", result=host.name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
 					   site=site.name if site else None, element_types=elementTypes, connection_types=connectionTypes,
