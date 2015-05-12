@@ -20,7 +20,7 @@ from .. import elements, host
 from ..lib.attributes import Attr #@UnresolvedImport
 from generic import ST_CREATED, ST_PREPARED, ST_STARTED
 from ..lib.error import UserError
-from builtins import True
+
 
 class UDP_Endpoint(elements.Element):
 	element = models.ForeignKey(host.HostElement, null=True, on_delete=models.SET_NULL)
