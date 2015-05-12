@@ -24,6 +24,7 @@ from lib.error import TransportError, InternalError, UserError, Error
 from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
+import elements
 import time, hashlib, threading, datetime, zlib, base64, sys
 
 class RemoteWrapper:
@@ -1036,7 +1037,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			continue
 		if set(elementTypes) - set(host.elementTypes.keys()):
 			continue
-		if set(connectionTypes) - set(host.connectionTypes.keys()):
+		if set(connectionTypes) - set(host.connectio	.keys()):
 			continue
 		if set(networkKinds) - set(host.getNetworkKinds()):
 			continue
@@ -1047,11 +1048,10 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	return hosts[0], prefs[hosts[0]]
 	
 def reallocate():
-
-	#needs to be redifined at a better place
+	#needs to be redefined at a better place
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
-	for el in Element:
+	for el in elements.getAll():
 		if el.activ:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
@@ -1067,58 +1067,15 @@ def reallocate():
 
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
-	# STEP 1: limit host choices to what is possible
-	if not sitePrefs: sitePrefs = {}
-	if not hostPrefs: hostPrefs = {}
-	if not networkKinds: networkKinds = []
-	if not connectionTypes: connectionTypes = []
-	if not elementTypes: elementTypes = []
-	all_ = getAll(site=site) if site else getAll()
-	hosts = []
-	for host in all_:
-		if host.problems():
-			continue
-		if set(elementTypes) - set(host.elementTypes.keys()):
-			continue
-		if set(connectionTypes) - set(host.connectionTypes.keys()):
-			continue
-		if set(networkKinds) - set(host.getNetworkKinds()):
-			continue
-		hosts.append(host)
-	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
-	# any host in hosts can handle the request
-	prefs = dict([(h, 0.0) for h in hosts])
-	# STEP 2: calculate preferences based on host load
-	els = 0.0
-	cons = 0.0
-	for h in hosts:
-		prefs[h] -= h.componentErrors * 25  # discourage hosts with previous errors
-		prefs[h] -= h.getLoad() * 100  # up to -100 points for load
-		els += h.elements.count()
-		cons += h.connections.count()
-	avgEls = els / len(hosts)
-	avgCons = cons / len(hosts)
-	for h in hosts:
-		# between -30 and +30 points for element/connection over-/under-population
-		if avgEls:
-			prefs[h] -= max(-20.0, min(10.0 * (h.elements.count() - avgEls) / avgEls, 20.0))
-		if avgCons:
-			prefs[h] -= max(-10.0, min(10.0 * (h.connections.count() - avgCons) / avgCons, 10.0))
-		# STEP 3: calculate preferences based on host location
-	for h in hosts:
-		if h in hostPrefs:
-			prefs[h] += hostPrefs[h]
-		if h.site in sitePrefs:
-			prefs[h] += sitePrefs[h.site]
-	#STEP 4: select the best host
-	hosts.sort(key=lambda h: prefs[h], reverse=True)
-	logging.logMessage("select", category="host", result=hosts[0].name,
+	
+	host, prefs = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+	logging.logMessage("select", category="host", host.name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
 					   site=site.name if site else None, element_types=elementTypes, connection_types=connectionTypes,
 					   network_types=networkKinds,
 					   host_prefs=dict([(k.name, v) for k, v in hostPrefs.iteritems()]),
 					   site_prefs=dict([(k.name, v) for k, v in sitePrefs.iteritems()]))
-	return hosts[0]
+	return host
 
 
 @cached(timeout=3600, autoupdate=True)
