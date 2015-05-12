@@ -253,11 +253,11 @@ class VMElement(elements.Element):
 			print('Host gefunden \n')
 			
 			
-			tmp = self.action("download_grant")
+			#tmp = self.action("download_grant")
 			
-			print(tmp)
+			#print(tmp)
 			#Download template. Receive download_grant from template and save it to a tempfile?
-			urllib.urlretrieve(tmp, "tmp_image.tar.gz")
+			urllib.urlretrieve(host.grantUrl(self.action("download_grant"), "download"), "tmp_image.tar.gz")
 			
 			
 			print('Download erfolgreich \n')
