@@ -33,6 +33,7 @@ class UDP_Endpoint(elements.Element):
 		"stop": [ST_STARTED],
 		"prepare": [ST_CREATED],
 		"destroy": [ST_PREPARED],
+		"migrate": [ST_PREPARED,ST_STARTED],
 		elements.REMOVE_ACTION: [ST_CREATED],
 	}
 	CUSTOM_ATTRS = {

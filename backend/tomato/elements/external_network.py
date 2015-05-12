@@ -36,6 +36,7 @@ class External_Network(elements.generic.ConnectingElement, elements.Element):
 	CUSTOM_ACTIONS = {
 		"start": [ST_CREATED],
 		"stop": [ST_STARTED],
+		"migrate": [ST_STARTED],
 		elements.REMOVE_ACTION: [ST_CREATED],
 	}
 	CUSTOM_ATTRS = {

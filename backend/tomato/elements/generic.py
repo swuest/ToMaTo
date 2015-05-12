@@ -47,6 +47,7 @@ class VMElement(elements.Element):
 		"prepare": [ST_CREATED],
 		"destroy": [ST_PREPARED],
 		"change_template": [ST_CREATED, ST_PREPARED],
+		"migrate": [ST_PREPARED],
 		elements.REMOVE_ACTION: [ST_CREATED],
 	}
 	CUSTOM_ATTRS = {

@@ -34,6 +34,7 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 		"destroy": [ST_PREPARED],
 		"start": [ST_PREPARED],
 		"stop": [ST_STARTED],
+		"migrate": [ST_PREPARED,ST_STARTED],
 		elements.REMOVE_ACTION: [ST_CREATED],
 	}
 	CUSTOM_ATTRS = {
