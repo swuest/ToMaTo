@@ -1059,8 +1059,8 @@ def reallocate():
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
-		prev,prevScor = getHostValue(el.element.host,el.attrs.host_info.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
-		best,bestScor = getHostValue(el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		prev,prevScor = getHostValue(el.element.host,el.element.host.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		best,bestScor = getHostValue(el.element.host.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		
 		#Compare best host with preference host and migrate to better one if possible
 		if prev != best:
