@@ -1056,16 +1056,16 @@ def reallocate():
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
 	for el in elements.getAll():
-		if el.state in ["started"]:
+		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
-		prev,prevScor = getHostValue(el.host,el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		prev,prevScor = getHostValue(el.element.host,el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		best,bestScor = getHostValue(el.site,el.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		
 		#Compare best host with preference host and migrate to better one if possible
 		if prev != best:
 			if bestScor - prevScor > THRESHOLD:
-				if el.canMigrate():
+				if el.checkMigrate():
 					el.action("migrate",best)
 				
 
