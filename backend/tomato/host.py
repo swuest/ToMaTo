@@ -1060,7 +1060,7 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host in hosts:
-		host_elements = host.getElement().getElements()
+		host_elements = host.elements
 		n = 0
 		for el in host_elements:
 			if not el.state in ["started"]:
