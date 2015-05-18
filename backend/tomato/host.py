@@ -1060,7 +1060,9 @@ def reallocate():
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
+		print(el)
 		mainElement = el.mainElement()
+		print(mainElement)
 		prevScor = getHostValue(host=mainElement.host,site=mainElement.host.site,elementTypes=mainElement.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		best,bestScor = getBestHost(site=mainElement.host.site,hostPrefs=hostPref,sitePrefs=sitePref)
 		
