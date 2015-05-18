@@ -1066,12 +1066,12 @@ def reallocate():
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
 		print("Aktuellen host bewerten")
-		prev,prevScor = getHostValue(host=el.element.host,site=el.element.host.site,elementTypes=el.type,hostPrefs=hostPref,sitePrefs=sitePref)
+		prevScor = getHostValue(host=el.element.host,site=el.element.host.site,elementTypes=el.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		print("neuen host suchen")
 		best,bestScor = getBestHost(site=el.element.host.site,elementTypes=el.type,hostPrefs=hostPref,sitePrefs=sitePref)
 		
 		#Compare best host with preference host and migrate to better one if possible
-		if prev != best:
+		if el.element.host != best:
 			if bestScor - prevScor > THRESHOLD:
 				if el.checkMigrate():
 					el.action("migrate",best)
