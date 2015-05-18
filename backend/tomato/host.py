@@ -1046,9 +1046,31 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	return hosts, prefs
 
 def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
-	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+	hosts_all, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+	cand,cand_prefs = checkForHostDeactivation()
+	hosts = []
+	for host in hosts_all:
+		if host not in cand:
+			hosts.append(host)
 	hosts.sort(key=lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
+	
+def checkForHostDeactivation():
+	hosts, prefs = getHostList()
+	candidates = []
+	candidates_prefs = []
+	for host in hosts:
+		host_elements = host.getElements()
+		n = 0
+		for el in host_elements:
+			if not el.state in ["started"]:
+				n+=1
+		if n == 0:
+			candidates.append(host)
+			candidates_prefs.append((host, prefs[host]))
+	candidates.sort(key=lambda h: prefs[h], reverse=True)
+	candidates_prefs.sort(key=lambda h: prefs[h], reverse=True)
+	return candidates, candidates_prefs
 	
 def reallocate():
 	
@@ -1060,20 +1082,15 @@ def reallocate():
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
-		print(el)
 		mainElement = el.mainElement()
-		print(mainElement)
 		if mainElement != None and el.element:
 			prevScor = getHostValue(host=mainElement.host,site=mainElement.host.site,elementTypes=mainElement.type,hostPrefs=hostPref,sitePrefs=sitePref)
 			best,bestScor = getBestHost(site=mainElement.host.site,hostPrefs=hostPref,sitePrefs=sitePref)
 		
 			#Compare best host with preference host and migrate to better one if possible
 			if el.element.host != best:
-				print("host != best")
 				if bestScor - prevScor > THRESHOLD:
-					print("best besser als host")
 					if el.checkMigrate():
-						print("migrate erlaubt")
 						el.action_migrate(best)
 				
 
