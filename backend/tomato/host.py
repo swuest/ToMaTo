@@ -1050,7 +1050,10 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	cand,cand_prefs = checkForHostDeactivation()
 	hosts = []
 	for host in hosts_all:
+		print("Gucken ob")
+				
 		if host not in cand:
+			print("host nicht potentiell abgeschaltet werden kann")
 			hosts.append(host)
 	hosts.sort(key=lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
@@ -1060,12 +1063,15 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host in hosts:
+		print("Host wird überprüft")
 		host_elements = host.elements
 		n = 0
+		
 		for el in host_elements:
 			if not el.state in ["started"]:
 				n+=1
 		if n == 0:
+			print("Host der potentiell abgeschaltet werden kann")
 			candidates.append(host)
 			candidates_prefs.append((host, prefs[host]))
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
