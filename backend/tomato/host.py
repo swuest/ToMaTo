@@ -1061,7 +1061,7 @@ def reallocate():
 	print(element_liste)
 	for el in element_liste:
 		print("Innerhalb der Liste")
-		print(el.state)
+		print(el)
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
