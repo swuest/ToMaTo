@@ -1057,7 +1057,7 @@ def reallocate():
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
 	print("Beginn der Listeniteration")
-	element_liste = [elements.getAll()]
+	element_liste = []+elements.getAll()
 	print(element_liste)
 	for el in element_liste:
 		print("Innerhalb der Liste")
