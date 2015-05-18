@@ -1074,7 +1074,7 @@ def reallocate():
 		if el.element.host != best:
 			if bestScor - prevScor > THRESHOLD:
 				if el.checkMigrate():
-					el.action("migrate",best)
+					el.action("migrate",best.name)
 				
 
 
