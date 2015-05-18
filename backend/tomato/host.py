@@ -1065,9 +1065,9 @@ def checkForHostDeactivation():
 	hosts, prefs = getHostList()
 	candidates = []
 	candidates_prefs = []
-	for host in hosts:
+	for host_ in hosts:
 		print("Host wird überprüft")
-		host_elements = list(elements.getAll(host))
+		host_elements = list(elements.getAll(host=host_))
 		n = 0
 		
 		for el in host_elements:
@@ -1075,8 +1075,8 @@ def checkForHostDeactivation():
 				n+=1
 		if n == 0:
 			print("Host der potentiell abgeschaltet werden kann")
-			candidates.append(host)
-			candidates_prefs.append((host, prefs[host]))
+			candidates.append(host_)
+			candidates_prefs.append((host_, prefs[host_]))
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
 	candidates_prefs.sort(key=lambda h: prefs[h], reverse=True)
 	return candidates, candidates_prefs
