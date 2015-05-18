@@ -1057,7 +1057,7 @@ def reallocate():
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
 	
-	for el in elements.getAll():
+	for el in [elements.getAll()]:
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
