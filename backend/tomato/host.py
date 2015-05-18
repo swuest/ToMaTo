@@ -1063,18 +1063,18 @@ def reallocate():
 		print(el)
 		mainElement = el.mainElement()
 		print(mainElement)
-		if mainElement != None:
+		if mainElement != None and el.element:
 			prevScor = getHostValue(host=mainElement.host,site=mainElement.host.site,elementTypes=mainElement.type,hostPrefs=hostPref,sitePrefs=sitePref)
 			best,bestScor = getBestHost(site=mainElement.host.site,hostPrefs=hostPref,sitePrefs=sitePref)
 		
-		#Compare best host with preference host and migrate to better one if possible
-		if el.element.host != best:
-			print("host != best")
-			if bestScor - prevScor > THRESHOLD:
-				print("best besser als host")
-				if el.checkMigrate():
-					print("migrate erlaubt")
-					el.action_migrate(best)
+			#Compare best host with preference host and migrate to better one if possible
+			if el.element.host != best:
+				print("host != best")
+				if bestScor - prevScor > THRESHOLD:
+					print("best besser als host")
+					if el.checkMigrate():
+						print("migrate erlaubt")
+						el.action_migrate(best)
 				
 
 
