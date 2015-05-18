@@ -114,9 +114,8 @@ class UDP_Endpoint(elements.Element):
 		self.setState(ST_PREPARED, True)
 
 	def checkMigrate(self):
-		if self.state in [ST_PREPARED]:
-			return True
-		return False
+		return self.state in [ST_PREPARED]
+	
 
 	def action_migrate(self,hst):
 		if self.checkMigrate():

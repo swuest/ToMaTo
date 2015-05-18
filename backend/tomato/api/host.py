@@ -179,7 +179,7 @@ def host_remove(name):
 	host_list.invalidate()
 
 @checkauth
-def host_reallokat():
+def host_reallocate():
 	host.reallocate()
 
 @checkauth

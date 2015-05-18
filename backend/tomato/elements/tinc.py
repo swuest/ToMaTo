@@ -228,11 +228,10 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 
 
 	def checkMigrate(self):
-		return self._childsByState()[ST_PREPARED] != [] or self._childsByState()[ST_STARTED] != []
+		return self._childsByState()[ST_PREPARED] != []
 
 	def action_migrate(self,hst):
 		self._parallelChildActions(self._childsByState()[ST_PREPARED], "migrate",hst)
-		self._parallelChildActions(self._childsByState()[ST_STARTED], "migrate",hst)
 
 	def upcast(self):
 		return self
@@ -346,12 +345,10 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		self.setState(ST_PREPARED, True)
 		
 	def checkMigrate(self):		
-		return self.state in [ST_PREPARED, ST_STARTED]
+		return self.state in [ST_PREPARED]
 		
 	def action_migrate(self,hst):
 		if self.checkMigrate():
-			if self.state in [ST_STARTED]:
-				self.action("stop")
 			self.action("destroy")
 			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 			attrs = self._remoteAttrs()
