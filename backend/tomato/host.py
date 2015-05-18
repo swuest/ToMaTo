@@ -1059,12 +1059,15 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	return hosts[0], prefs[hosts[0]]
 	
 def checkForHostDeactivation():
+	
+	import elements
+	
 	hosts, prefs = getHostList()
 	candidates = []
 	candidates_prefs = []
 	for host in hosts:
 		print("Host wird überprüft")
-		host_elements = list(host.elements.getAll())
+		host_elements = list(elements.getAll({'host':host}))
 		n = 0
 		
 		for el in host_elements:
