@@ -342,6 +342,9 @@ class VMInterface(elements.Element):
 			self.element = None
 			self.save()
 
+	def checkMigrate(self):
+		return False
+
 	def readyToConnect(self):
 		return self.state == ST_STARTED
 
