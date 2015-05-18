@@ -1056,25 +1056,21 @@ def reallocate():
 	#needs to be redefined at a better place
 	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
-	print("Beginn der Listeniteration")
-	element_liste = list(elements.getAll())
-	print(element_liste)
-	for el in element_liste:
-		print("Innerhalb der Liste")
-		print(el)
+	for el in  list(elements.getAll()):
 		if el.state in ["started","created"]:
 			continue
 		hostPref, sitePref = el.getLocationPrefs()
-		print("Aktuellen host bewerten")
 		prevScor = getHostValue(host=el.element.host,site=el.element.host.site,elementTypes=el.type,hostPrefs=hostPref,sitePrefs=sitePref)
-		print("neuen host suchen")
 		best,bestScor = getBestHost(site=el.element.host.site,hostPrefs=hostPref,sitePrefs=sitePref)
 		
 		#Compare best host with preference host and migrate to better one if possible
 		if el.element.host != best:
+			print("host != best")
 			if bestScor - prevScor > THRESHOLD:
+				print("best besser als host")
 				if el.checkMigrate():
-					el.action("migrate",best.name)
+					print("migrate erlaubt")
+					el.action("migrate",best)
 				
 
 
