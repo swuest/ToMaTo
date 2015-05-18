@@ -1067,7 +1067,7 @@ def checkForHostDeactivation():
 	candidates_prefs = []
 	for host_ in hosts:
 		print("Host wird überprüft")
-		host_elements = list(elements.getAll(host=host_))
+		host_elements = list(host_.elements.getAll())
 		n = 0
 		
 		for el in host_elements:
