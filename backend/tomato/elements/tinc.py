@@ -347,9 +347,7 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		self.setState(ST_PREPARED, True)
 		
 	def checkMigrate(self):		
-		if self.state in [ST_PREPARED, ST_STARTED]:
-			return True
-		return False
+		return self.state in [ST_PREPARED, ST_STARTED]
 		
 	def action_migrate(self,hst):
 		if self.checkMigrate():
