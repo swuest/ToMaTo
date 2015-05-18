@@ -226,6 +226,11 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 		self._parallelChildActions(self._childsByState()[ST_PREPARED], "start")
 		self.setState(ST_STARTED)
 
+
+	def checkMigrate(self):
+		return self.state in self.CUSTOM_ACTIONS["migrate"]
+			
+
 	def action_migrate(self,hst):
 		self._parallelChildActions(self._childsByState()[ST_PREPARED], "migrate",hst)
 		self._parallelChildActions(self._childsByState()[ST_STARTED], "migrate",hst)
