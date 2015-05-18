@@ -1070,7 +1070,7 @@ def reallocate():
 				print("best besser als host")
 				if el.checkMigrate():
 					print("migrate erlaubt")
-					el.action("migrate",best)
+					el.action_migrate(best)
 				
 
 
