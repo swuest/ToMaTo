@@ -241,9 +241,7 @@ class VMElement(elements.Element):
 
 	def checkMigrate(self):
 		#We only migrate if the element is prepared
-		if self.state in [ST_PREPARED]:
-			return True
-		return False
+		return self.state in [ST_PREPARED]
 	
 	def action_migrate(self,hst):
 		if self.checkMigrate() and self.element.host.name != hst.name:
