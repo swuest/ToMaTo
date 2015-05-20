@@ -282,6 +282,8 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 	availability = attributes.attribute("availability", float, 1.0)
 	description_text = attributes.attribute("description_text", unicode, "")
 	dump_last_fetch = attributes.attribute("dump_last_fetch", float, 0)
+	detachable = attributes.attribute("detachable", bool,False)
+	
 	# connections: [HostConnection]
 	# elements: [HostElement]
 	# templates: [TemplateOnHost]
@@ -1050,10 +1052,8 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	cand,cand_prefs = checkForHostDeactivation()
 	hosts = []
 	for host in hosts_all:
-		print("Gucken ob")
 				
 		if host not in cand:
-			print("host nicht potentiell abgeschaltet werden kann")
 			hosts.append(host)
 			
 	hosts.append(hosts_all[0])
@@ -1066,25 +1066,18 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host_ in hosts:
-		print("Host wird überprüft")
-		print(host_)
-		host_elements = HostElement.objects.filter(host = host_)
-		print(host_elements)
-		n = 0
-		print("Überprüfe Elemente")
-		for el in host_elements:
-			print("State = started")
-			if el.state in ["started"]:
+		if host_.detachable:
+			print(host_)
+			host_elements = HostElement.objects.filter(host = host_)
+			print(host_elements)
+			n = 0
+			for el in host_elements:
+				if el.state in ["started"]:
+					n+=1
+			if n == 0:
 				
-				print("Ja")
-				n+=1
-		if n == 0:
-			print("Host der potentiell abgeschaltet werden kann")
-			
-			candidates.append(host_)
-			print("1.")
-			candidates_prefs.append((host_, prefs[host_]))
-			print("2.")
+				candidates.append(host_)
+				candidates_prefs.append((host_, prefs[host_]))
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
 	print("3.")
 	candidates_prefs.sort(key=lambda h: h[1], reverse=True)
