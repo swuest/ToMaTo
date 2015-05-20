@@ -1049,7 +1049,7 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 
 def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
 	hosts_all, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-	cand,cand_prefs = checkForHostDeactivation()
+	cand = checkForHostDeactivation()
 	hosts = []
 	for host in hosts_all:
 		if host not in cand:
@@ -1063,23 +1063,20 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host_ in hosts:
+		print(".")
+		print(host_.detachable)
 		if host_.detachable:
-			print(host_)
 			host_elements = HostElement.objects.filter(host = host_)
-			print(host_elements)
 			n = 0
 			for el in host_elements:
 				if el.state in ["started"]:
 					n+=1
 			if n == 0:
-				
 				candidates.append(host_)
 				candidates_prefs.append((host_, prefs[host_]))
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
-	print("3.")
-	candidates_prefs.sort(key=lambda h: h[1], reverse=True)
-	print("4.")
-	return candidates, candidates_prefs
+	print(".")
+	return candidates
 	
 def reallocate():
 	
