@@ -1059,13 +1059,12 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	return hosts[0], prefs[hosts[0]]
 	
 def checkForHostDeactivation():
-	
-	
 	hosts, prefs = getHostList()
 	candidates = []
 	candidates_prefs = []
 	for host_ in hosts:
 		print("Host wird überprüft")
+		print(host_)
 		host_elements = HostElement.objects.filter(host = host_)
 		print(host_elements)
 		n = 0
@@ -1078,10 +1077,16 @@ def checkForHostDeactivation():
 				n+=1
 		if n == 0:
 			print("Host der potentiell abgeschaltet werden kann")
+			print(candidates)
+			
 			candidates.append(host_)
+			print("1.")
 			candidates_prefs.append((host_, prefs[host_]))
+			print("2.")
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
+	print("3.")
 	candidates_prefs.sort(key=lambda h: prefs[h], reverse=True)
+	print("4.")
 	return candidates, candidates_prefs
 	
 def reallocate():
