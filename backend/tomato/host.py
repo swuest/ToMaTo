@@ -1052,11 +1052,8 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	cand,cand_prefs = checkForHostDeactivation()
 	hosts = []
 	for host in hosts_all:
-				
 		if host not in cand:
 			hosts.append(host)
-			
-	hosts.append(hosts_all[0])
 	if hosts != []:
 		hosts.sort(key=	lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
