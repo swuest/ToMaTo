@@ -327,6 +327,7 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 		self.hostInfoTimestamp = (before + after) / 2.0
 		self.hostInfo["query_time"] = after - before
 		self.hostInfo["time_diff"] = self.hostInfo["time"] - self.hostInfoTimestamp
+		self.detachable = self.hostInfo["detachable"]
 		try:
 			self.hostNetworks = self.getProxy().host_networks()
 		except:
