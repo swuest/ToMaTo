@@ -1055,6 +1055,8 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 		if host not in cand:
 			print("host nicht potentiell abgeschaltet werden kann")
 			hosts.append(host)
+			
+	hosts.append(hosts_all[0])
 	if hosts != []:
 		hosts.sort(key=	lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
