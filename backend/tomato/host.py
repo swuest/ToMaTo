@@ -1084,7 +1084,7 @@ def checkForHostDeactivation():
 			print("2.")
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
 	print("3.")
-	candidates_prefs.sort(key=lambda h: h[2], reverse=True)
+	candidates_prefs.sort(key=lambda h: h[1], reverse=True)
 	print("4.")
 	return candidates, candidates_prefs
 	
