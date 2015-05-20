@@ -1067,11 +1067,14 @@ def checkForHostDeactivation():
 	for host_ in hosts:
 		print("Host wird überprüft")
 		host_elements = HostElement.objects.filter(host = host_)
-		print(	host_elements)
+		print(host_elements)
 		n = 0
-		
+		print("Überprüfe Elemente")
 		for el in host_elements:
-			if not el.state in ["started"]:
+			print("State = started")
+			if el.state in ["started"]:
+				
+				print("Ja")
 				n+=1
 		if n == 0:
 			print("Host der potentiell abgeschaltet werden kann")
