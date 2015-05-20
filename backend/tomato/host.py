@@ -1063,7 +1063,6 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host_ in hosts:
-		print(".")
 		print(host_.detachable)
 		if host_.detachable:
 			host_elements = HostElement.objects.filter(host = host_)
@@ -1075,7 +1074,6 @@ def checkForHostDeactivation():
 				candidates.append(host_)
 				candidates_prefs.append((host_, prefs[host_]))
 	candidates.sort(key=lambda h: prefs[h], reverse=True)
-	print(".")
 	return candidates
 	
 def reallocate():
