@@ -705,6 +705,7 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 			"host_info_timestamp": self.hostInfoTimestamp,
 			"availability": self.availability,
 			"description_text": self.description_text,
+			"detachable": self.detachable,
 			"networks": [n for n in self.hostNetworks] if self.hostNetworks else None
 		}
 
@@ -1020,6 +1021,16 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 	pref = 0.0
 	pref -= host.componentErrors * 25  # discourage hosts with previous errors
 	pref -= host.getLoad() * 100  # up to -100 points for load
+	if host.detachable:
+		host_elements = HostElement.objects.filter(host = host)
+		n = 0
+		for el in host_elements:
+			if el.state in ["started"]:
+				n+=1
+		pref += n*2
+	else:
+		pref -= 50 
+		
 	if host in hostPrefs:
 		pref += hostPrefs[host]
 	if host.site in sitePrefs:
