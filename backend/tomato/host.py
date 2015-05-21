@@ -1027,9 +1027,12 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 		for el in host_elements:
 			if el.state in ["started"]:
 				n+=1
-		pref += n*2
+		if n =< 10:
+			pref -= 50
+		if n > 10:
+			pref += 25
 	else:
-		pref -= 50 
+		pref += 25 
 		
 	if host in hostPrefs:
 		pref += hostPrefs[host]
