@@ -1064,7 +1064,7 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			continue
 		if set(networkKinds) - set(host.getNetworkKinds()):
 			continue
-		if host.deactivated:
+		if host.detached:
 			continue
 		hosts.append(host)
 	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
@@ -1259,7 +1259,7 @@ def host_deactivation():
 	
 def host_allocation():
 		hosts = []
-		for host in Host.objects.filter(deactivated = True):
+		for host in Host.objects.filter(detached = True):
 			hosts.append((host,getHostValue(host)))
 			
 		if hosts.exists():
