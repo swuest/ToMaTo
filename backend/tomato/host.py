@@ -1221,7 +1221,7 @@ def synchronizeComponents():
 	for hcon in HostConnection.objects.all():
 		hcon.synchronize()
 		
-@util.wrap_task
+
 def host_management():
 	
 	AVG_MINIMUM = 0.4
