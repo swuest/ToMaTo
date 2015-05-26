@@ -25,7 +25,6 @@ from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
-from tomato.api.host import host_reallocate
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -1245,7 +1244,7 @@ def host_management():
 def host_deactivation():
 	hosts = checkForHostDeactivation()
 	for host in hosts:
-		host_reallocate()
+		host.reallocate()
 		
 		for el in HostElement.objects.filter(host = host):
 			
