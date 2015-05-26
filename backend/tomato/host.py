@@ -25,6 +25,7 @@ from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
+from tomato.api.host import host_reallocate
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -283,6 +284,7 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 	description_text = attributes.attribute("description_text", unicode, "")
 	dump_last_fetch = attributes.attribute("dump_last_fetch", float, 0)
 	detachable = attributes.attribute("detachable", bool,False)
+	detached = attributes.attribute("detached",bool, False)
 	
 	# connections: [HostConnection]
 	# elements: [HostElement]
@@ -705,8 +707,10 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 			"host_info_timestamp": self.hostInfoTimestamp,
 			"availability": self.availability,
 			"description_text": self.description_text,
-			"detachable": self.detachable,
-			"networks": [n for n in self.hostNetworks] if self.hostNetworks else None
+			"detachable": self.detachable,			
+			"detached": self.detached,
+			"networks": [n for n in self.hostNetworks] if self.hostNetworks else None,
+
 		}
 
 	def __str__(self):
@@ -740,7 +744,11 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 
 	def dump_get_last_fetch(self):
 		return self.dump_last_fetch
-
+	
+	def deactivate(self):
+		self.detached = True;
+		self.getProxy().host_deactivate(self.name)
+	
 
 class HostElement(attributes.Mixin, models.Model):
 	host = models.ForeignKey(Host, null=False, related_name="elements")
@@ -1057,6 +1065,8 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			continue
 		if set(networkKinds) - set(host.getNetworkKinds()):
 			continue
+		if host.deactivated:
+			continue
 		hosts.append(host)
 	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
 	prefs = dict([(h, getHostValue(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
@@ -1078,7 +1088,6 @@ def checkForHostDeactivation():
 	candidates = []
 	candidates_prefs = []
 	for host_ in hosts:
-		print(host_.detachable)
 		if host_.detachable:
 			host_elements = HostElement.objects.filter(host = host_)
 			n = 0
@@ -1212,7 +1221,56 @@ def synchronizeComponents():
 		hel.synchronize()
 	for hcon in HostConnection.objects.all():
 		hcon.synchronize()
+		
+@util.wrap_task
+def host_management():
+	
+	AVG_MINIMUM = 0.4
+	AVG_MAXIMUM = 0.8
+	
+	import statistics
+	
+	avg = []
+	for h in getHostList():
+		avg.append(h.getLoad())
+		
+	avg = statistics.mean(avg)
+	print(avg)
+	if avg < AVG_MINIMUM:		
+		host_deactivation()
+	elif avg >= AVG_MAXIMUM:
+		host_allocation()
+		
+			
+def host_deactivation():
+	hosts = checkForHostDeactivation()
+	for host in hosts:
+		host_reallocate()
+		
+		for el in HostElement.objects.filter(host = host):
+			
+			new_hosts,new_hosts_pref = getHostList(site = host.site)
+			new_hosts.remove(host)
+	
+			new_hosts.sort(key=lambda h: new_hosts_pref[h], reverse=True)		
+			el.action("migrate",new_hosts[0])
+			
+			if not HostElement.objects.filter(host = host).exists():
+				host.allow_deactivation() 
+	
+def host_allocation():
+		hosts = []
+		for host in Host.objects.filter(deactivated = True):
+			hosts.append((host,getHostValue(host)))
+			
+		if hosts.exists():
+			hosts.sort(key=lambda h: h[1], reverse=True)
+			hosts[0][0].action('allocate')
+		#else:
+			#TODO: Do something to chose the best technology to allocate new hosts
+	
 
 
 scheduler.scheduleRepeated(config.HOST_UPDATE_INTERVAL, synchronize)  # @UndefinedVariable
 scheduler.scheduleRepeated(3600, synchronizeComponents)  # @UndefinedVariable
+scheduler.scheduleRepeated(300, host_management)  # @UndefinedVariable
