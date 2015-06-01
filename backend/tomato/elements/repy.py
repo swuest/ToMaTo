@@ -59,9 +59,6 @@ class Repy(generic.VMElement):
 		self.setState(generic.ST_CREATED, True)
 
 
-	#TODO: integrate migration function and additional migrate the repy log
-	def checkMigrate(self):
-		return False
 
 	
 class Repy_Interface(generic.VMInterface):

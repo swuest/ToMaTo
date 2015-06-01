@@ -348,7 +348,7 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		return self.state in [ST_PREPARED]
 		
 	def action_migrate(self,hst):
-		if self.checkMigrate():
+		if self.checkMigrate() and self.element.host.name != hst.name:
 			self.action("destroy")
 			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 			attrs = self._remoteAttrs()

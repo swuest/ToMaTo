@@ -23,6 +23,7 @@ from generic import ST_CREATED, ST_STARTED
 from .. import currentUser
 from ..auth import Flags
 from ..lib.error import UserError
+from tomato.elements.generic import ST_PREPARED
 
 class External_Network(elements.generic.ConnectingElement, elements.Element):
 	name_attr = Attr("name", desc="Name")
@@ -36,7 +37,7 @@ class External_Network(elements.generic.ConnectingElement, elements.Element):
 	CUSTOM_ACTIONS = {
 		"start": [ST_CREATED],
 		"stop": [ST_STARTED],
-		"migrate": [ST_STARTED],
+		"migrate": [ST_PREPARED],
 		elements.REMOVE_ACTION: [ST_CREATED],
 	}
 	CUSTOM_ATTRS = {
@@ -195,9 +196,7 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 
 	def checkMigrate(self):
 		#We only migrate if the external network is already started, otherwise we don't have to migrate
-		if self.state in [ST_STARTED]:
-			return True
-		return False
+		return self.state in [ST_PREPARED]
 	
 	def action_migrate(self,hst):
 		if self.checkMigrate():

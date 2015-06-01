@@ -252,16 +252,8 @@ class VMElement(elements.Element):
 			#Download template. Receive download_grant from template and save it to a tempfile?
 			urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), "tmp_image.tar.gz")
 			
-			
-			attrs = self._remoteAttrs()
-			attrs.update({
-				"template": self._template().name,
-			})
-			attrs.update(self._profileAttrs())
-			
-			
 			#Create identical element on new host
-			new_el = hst.createElement(self.TYPE, parent=None, attrs=attrs, ownerElement=self)
+			new_el = hst.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
 
 			#Kill old element on old host
 			self.element.action("destroy")
