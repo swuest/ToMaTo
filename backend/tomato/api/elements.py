@@ -299,7 +299,7 @@ def element_usage(id): #@ReservedAssignment
 	el = _getElement(id)
 	return el.totalUsage.info()	
 
-def element_migrate(id,hst): #@ReservedAssignment
+def element_migrate(id,host): #@ReservedAssignment
 	"""
 	Migrates an element to a new host
 	
@@ -317,8 +317,7 @@ def element_migrate(id,hst): #@ReservedAssignment
 	from host import _getHost
 	
 	el = _getElement(id)
-	ho = _getHost(hst)
-	el.action_migrate(ho)
+	el.action_migrate(host)
 	return el.info()
 	
 

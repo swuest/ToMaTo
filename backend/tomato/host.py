@@ -1133,7 +1133,6 @@ def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None
 	if not elementTypes: elementTypes = []
 	
 	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 
 	logging.logMessage("select", category="host", result=host.name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
@@ -1255,7 +1254,7 @@ def host_deactivation():
 			new_hosts.remove(host)
 	
 			new_hosts.sort(key=lambda h: new_hosts_pref[h], reverse=True)		
-			el.action("migrate",new_hosts[0])
+			el.action("migrate",new_hosts[0].name)
 			
 			if not HostElement.objects.filter(host = host).exists():
 				host.allow_deactivation() 

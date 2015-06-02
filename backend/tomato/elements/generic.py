@@ -243,33 +243,38 @@ class VMElement(elements.Element):
 		#We only migrate if the element is prepared
 		return self.state in [ST_PREPARED]
 	
-	def action_migrate(self,hst):
-		if self.checkMigrate() and self.element.host.name != hst.name:
-			
-			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",data={"type": self.TYPE})
-			
+	def action_migrate(self,host):
 		
-			#Download template. Receive download_grant from template and save it to a tempfile?
-			urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), "tmp_image.tar.gz")
-			
-			#Create identical element on new host
-			new_el = hst.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
+		from ..host import Host
+		
+		host = Host.objects.filter(name = host)
+		
+		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
+		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
+		
+	
+		#Download template. Receive download_grant from template and save it to a tempfile?
+		urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), self.name+"_tmp_image.tar.gz")
+		
+		#Create identical element on new host
+		new_el = host.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
 
-			#Kill old element on old host
-			self.element.action("destroy")
-			
-			#Set new element and save it
-			self.element = new_el
-			self.save()
-			for iface in self.getChildren():
-				iface._create()
-			self.element.action("prepare")
-			
-			self.setState(ST_PREPARED, True)
-			
-			upload(hst.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
-			new_el.action("upload_use")
-			
+		#Kill old element on old host
+		self.element.action("destroy")
+		
+		#Set new element and save it
+		self.element = new_el
+		self.save()
+		for iface in self.getChildren():
+			iface._create()
+		self.element.action("prepare")
+		
+		self.setState(ST_PREPARED, True)
+		
+		upload(host.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
+		new_el.action("upload_use")
+		
 
 	
 

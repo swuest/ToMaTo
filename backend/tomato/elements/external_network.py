@@ -19,11 +19,10 @@ from django.db import models
 from .. import elements, resources, host
 from ..resources import network as r_network
 from ..lib.attributes import Attr #@UnresolvedImport
-from generic import ST_CREATED, ST_STARTED
+from generic import ST_CREATED, ST_STARTED, ST_PREPARED
 from .. import currentUser
 from ..auth import Flags
 from ..lib.error import UserError
-from tomato.elements.generic import ST_PREPARED
 
 class External_Network(elements.generic.ConnectingElement, elements.Element):
 	name_attr = Attr("name", desc="Name")
