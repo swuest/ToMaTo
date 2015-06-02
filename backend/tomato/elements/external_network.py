@@ -197,21 +197,26 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 		#We only migrate if the external network is already started, otherwise we don't have to migrate
 		return self.state in [ST_PREPARED]
 	
-	def action_migrate(self,hst):
-		if self.checkMigrate():
-			kind = self.getParent().network.kind if self.parent and self.getParent().samenet else self.kind
-			
-			UserError.check(hst, code=UserError.NO_RESOURCES, message="No matching host found for element",
-				data={"type": self.TYPE})
-			if self.parent and self.getParent().samenet:
-				self.network = r_network.getInstance(hst, self.getParent().network.kind)
-			else:
-				self.network = r_network.getInstance(hst, self.kind)			
-			attrs = {"network": self.network.network.kind}
-			self.element.action("destroy")
-			self.element = hst.createElement("external_network", parent=None, attrs=attrs, ownerElement=self)
-			self.setState(ST_STARTED)
-			self.triggerConnectionStart()
+	def action_migrate(self,host):
+		from ..host import Host
+		
+		host = Host.objects.filter(name = host)
+		
+		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
+		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
+
+		kind = self.getParent().network.kind if self.parent and self.getParent().samenet else self.kind
+		
+		if self.parent and self.getParent().samenet:
+			self.network = r_network.getInstance(host, self.getParent().network.kind)
+		else:
+			self.network = r_network.getInstance(host, self.kind)			
+		attrs = {"network": self.network.network.kind}
+		self.element.action("destroy")
+		self.element = host.createElement("external_network", parent=None, attrs=attrs, ownerElement=self)
+		self.setState(ST_STARTED)
+		self.triggerConnectionStart()
 		
 
 	def readyToConnect(self):
