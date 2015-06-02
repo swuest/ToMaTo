@@ -1133,6 +1133,7 @@ def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None
 	if not elementTypes: elementTypes = []
 	
 	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
+	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 
 	logging.logMessage("select", category="host", result=host.name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
