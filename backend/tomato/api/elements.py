@@ -298,27 +298,6 @@ def element_usage(id): #@ReservedAssignment
 	"""
 	el = _getElement(id)
 	return el.totalUsage.info()	
-
-def element_migrate(id,host): #@ReservedAssignment
-	"""
-	Migrates an element to a new host
-	
-	
-	Parameter *id*:
-	  The parameter *id* identifies the element by giving its unique id.
-	  
-	Parameter *host*:
-	  The parameter *host* identifies the new host by giving its unique id.
-	  
-	Return value:
-	  Returns the host name to confirm the 
-	
-	"""
-	from host import _getHost
-	
-	el = _getElement(id)
-	el.action_migrate(host)
-	return el.info()
 	
 
 from .. import elements, currentUser

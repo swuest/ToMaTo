@@ -114,19 +114,19 @@ class UDP_Endpoint(elements.Element):
 		self.setState(ST_PREPARED, True)
 
 	def checkMigrate(self):
-		return self.state in [ST_PREPARED]
+		return self.state in [ST_CREATED,ST_PREPARED]
 	
 
-	def action_migrate(self,host):		
-		
-		from ..host import Host
-		
-		host = Host.objects.filter(name = host)
-		
-		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
-		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+	def action_migrate(self):		
+			
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
-
+		if self.state in [ST_CREATED]: return
+		
+		host_ = host.select(elementTypes=[self.remoteType()])
+		UserError.check(host_, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+		
+		if host_.name == self.element.host.name: return		
+		
 		self.element.action("destroy")
 		self.element = host.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
 		self.save()

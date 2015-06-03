@@ -20,6 +20,7 @@ from ..resources import profile as r_profile, template as r_template
 from ..lib.attributes import Attr, attribute #@UnresolvedImport
 from ..lib import attributes,rpc #@UnresolvedImport
 from ..lib.error import UserError, InternalError
+from ..lib.util import upload
 import time
 import urllib
 
@@ -241,24 +242,27 @@ class VMElement(elements.Element):
 
 	def checkMigrate(self):
 		#We only migrate if the element is prepared
-		return self.state in [ST_PREPARED]
+		return self.state in [ST_CREATED,ST_PREPARED]
 	
-	def action_migrate(self,host):
 		
-		from ..host import Host
+	def try_migrate(self):
 		
-		host = Host.objects.filter(name = host)
-		
-		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
-		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+				
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
+		if self.state in [ST_CREATED]: return
 		
-	
+		hPref, sPref = self.getLocationPrefs()
+		host_ = host.select(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		UserError.check(host_, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+		
+		if host_.name == self.element.host.name: return		
+		
+		
 		#Download template. Receive download_grant from template and save it to a tempfile?
 		urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), self.name+"_tmp_image.tar.gz")
 		
 		#Create identical element on new host
-		new_el = host.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
+		new_el = host_.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
 
 		#Kill old element on old host
 		self.element.action("destroy")
@@ -268,15 +272,19 @@ class VMElement(elements.Element):
 		self.save()
 		
 		for iface in self.getChildren():
-			iface.action("migrate",host)
+			iface.try_migrate()
 		self.element.action("prepare")
 		
 		self.setState(ST_PREPARED, True)
 		
-		upload(host.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
-		new_el.action("upload_use")
-		
+		upload(host_.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
+		new_el.action("upload_use")	
+			
+	def action_migrate(self):
 
+		UserError.check(currentUser(), code=UserError.NOT_LOGGED_IN, message="Unauthorized")
+		UserError.check("global_admin" in currentUser().Flags, code=UserError.DENIED, message="Unauthorized")
+		self.try_migrate()
 	
 
 	def upcast(self):
@@ -339,17 +347,13 @@ class VMInterface(elements.Element):
 			self.save()
 
 	def checkMigrate(self):
-		return self.state in ST_PREPARED
+		return self.state in [ST_CREATED,ST_PREPARED]
 	
-	def action_migrate(self,host):
-		from ..host import Host
-		
-		host = Host.objects.filter(name = host)
-		
-		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
-		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+	def try_migrate(self):
+			
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
-				
+		if self.state in [ST_CREATED]: return
+			
 		parEl = self.getParent().element
 		assert parEl
 		attrs = self._remoteAttrs()
@@ -365,34 +369,6 @@ class VMInterface(elements.Element):
 	def upcast(self):
 		return self
 	
-def upload (url, file, name="upload"):
-		import httplib, urlparse, os
-		parts = urlparse.urlparse(url)
-		conn = httplib.HTTPConnection(parts.netloc)
-		req = parts.path
-		if parts.query:
-			req += "?" + parts.query
-		conn.putrequest("POST", req)
-		filename = os.path.basename(file)
-		filesize = os.path.getsize(file)
-		BOUNDARY = '----------ThIs_Is_tHe_bouNdaRY_$'
-		CRLF = '\r\n'
-		prepend = "--" + BOUNDARY + CRLF + 'Content-Disposition: form-data; name="%s"; filename="%s"' % (
-		name, filename) + CRLF + "Content-Type: application/data" + CRLF + CRLF
-		append = CRLF + "--" + BOUNDARY + "--" + CRLF + CRLF
-		conn.putheader("Content-Length", len(prepend) + filesize + len(append))
-		conn.putheader("Content-Type", 'multipart/form-data; boundary=%s' % BOUNDARY)
-		conn.endheaders()
-		conn.send(prepend)
-		fd = open(file, "r")
-		data = fd.read(8192)
-		while data:
-			conn.send(data)
-			data = fd.read(8192)
-		fd.close()
-		conn.send(append)
-		resps = conn.getresponse()
-		data = resps.read()
 		
 class ConnectingElement:
 	def getLocationData(self, maxDepth=3):

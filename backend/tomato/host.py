@@ -286,6 +286,7 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 	dump_last_fetch = attributes.attribute("dump_last_fetch", float, 0)
 	detachable = attributes.attribute("detachable", bool,False)
 	detached = attributes.attribute("detached",bool, False)
+	fixedPref = attributes.attribute("fixed_pref",float,0)
 	
 	# connections: [HostConnection]
 	# elements: [HostElement]
@@ -587,6 +588,8 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 				self.enabled = value
 			elif key == "description_text":
 				self.description_text = value
+			elif key == "detached":
+				self.detached
 			else:
 				raise UserError(code=UserError.UNSUPPORTED_ATTRIBUTE, message="Unknown host attribute",
 					data={"attribute": key})
@@ -710,6 +713,7 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 			"description_text": self.description_text,
 			"detachable": self.detachable,			
 			"detached": self.detached,
+			"fixed_pref": self.fixedPref,
 			"networks": [n for n in self.hostNetworks] if self.hostNetworks else None,
 
 		}
@@ -745,10 +749,6 @@ class Host(attributes.Mixin, DumpSource, models.Model):
 
 	def dump_get_last_fetch(self):
 		return self.dump_last_fetch
-	
-	def deactivate(self):
-		self.detached = True;
-		self.getProxy().host_deactivate(self.name)
 	
 
 class HostElement(attributes.Mixin, models.Model):
@@ -1031,31 +1031,8 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 	pref = 0.0
 	pref -= host.componentErrors * 25  # discourage hosts with previous errors
 	pref -= host.getLoad() * 100  # up to -100 points for load
-	if host.detachable:
-		host_elements = HostElement.objects.filter(host = host)
-		n = 0
-		#Count all on this host deployed elements 
-		for el in host_elements:
-			if el.state in ["started"]:
-				n+=1
-		#If we have less than 10, "mark" him as possible candidate for detaching
-		if n <= 10:
-			pref -= 50
-		elif n > 10:
-			pref += 25
-	else:
-		pref += 25 
-	
-	#We need to take a view on the given resources of an host
-	#Give the CPU's some points
-	pref += host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg']/1000
-	
-	#Points for free disc space
-	pref += host.hostinfo['resources']['diskspace']['data']['free']/10000000
-	
-	#Points for Memory
-	pref += host.hostinfo['resources']['diskspace']['memory']['total']/1000000
-		
+	pref += host.fixedPref
+
 	if host in hostPrefs:
 		pref += hostPrefs[host]
 	if host.site in sitePrefs:
@@ -1086,70 +1063,62 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	prefs = dict([(h, getHostValue(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
 	return hosts, prefs
 
-def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
-	hosts_all, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-	cand = checkForHostDeactivation()
-	hosts = []
-	for host in hosts_all:
-		if host not in cand:
-			hosts.append(host)
-	if hosts != []:
-		hosts.sort(key=	lambda h: prefs[h], reverse=True)
-	else:
-		hosts = hosts_all.sort(key=	lambda h: prefs[h], reverse=True)
+def getBestHost(hostList):
+	
+	hosts, prefs = hostList
+	
 	return hosts[0], prefs[hosts[0]]
 	
+@util.wrap_task
 def checkForHostDeactivation():
-	hosts, prefs = getHostList()
-	candidates = []
-	candidates_prefs = []
+	hosts = Host.objects.filter(detached=False,enabled=True)
+		
+	sum_free_cpu_power = 0
+	sum_free_disc_space = 0
+	sum_free_memory = 0
 	
-		
-
-	import statistics
+	fixedPref = 0
 	
-	avg = []
-	for h in getHostList():
-		avg.append(h.getLoad())
+	#Get a sum of all free resources of all hosts 
+	for host in hosts:
+		sum_free_cpu_power += (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])*(1-host.getLoad())
+		sum_free_disc_space += host.hostinfo['resources']['diskspace']['data']['free']
+		sum_free_memory += host.hostinfo['resources']['diskspace']['memory']['total']-host.hostinfo['resources']['diskspace']['memory']['used']
+			
+	#Check for hosts that can fit into the free resources of all 
+	for host in Host.objects.filter(detachable=True,enabled=True):
 		
-	avg = statistics.mean(avg)
-
-	if avg < AVG_MINIMUM:
-		for host_ in hosts:
-			if host_.detachable:
-				host_elements = HostElement.objects.filter(host = host_)
-				n = 0
-				for el in host_elements:
-					if el.state in ["started"]:
-						n+=1
-				if n == 0:
-					candidates.append(host_)
-					candidates_prefs.append((host_, prefs[host_]))
-		candidates.sort(key=lambda h: prefs[h], reverse=True)
 		
-	return candidates
+		#Fixed Points for being detachable
+		fixedPref=-25
+		
+		host_cpu_power_used = (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])*host.getLoad()
+		host_disc_space_used = host.hostinfo['resources']['diskspace']['data']['used']
+		host_memory_used = host.hostinfo['resources']['diskspace']['memory']['used']
+		
+		#Check for active elements and connections and reduce fixedPref for each
+		host_elements = HostElement.objects.filter(host = host)	
+		host_connections = HostConnection.objects.filter(host = host)	
+		if host_elements == [] and host_connections == []:
+			fixedPref -=100
+		#If we can fit the used resources of a detachable host into the other hosts, just do so
+		if host_cpu_power_used < (sum_free_cpu_power-host_cpu_power_used):
+			if host_disc_space_used < (sum_free_disc_space - host_disc_space_used):
+				if host_memory_used < (sum_free_memory - host_memory_used):
+					fixedPref -= 200
+					if host_elements == [] and host_connections == []:
+						#He has no active elements and we can handle his load
+						fixedPref -=900
+			
+				
+		host.fixedPref = fixedPref
 	
 def reallocate():
 	
 	import elements
-	#needs to be redefined at a better place
-	THRESHOLD = 20
 	#Walk through all elements and think about reallocating them.
 	for el in  list(elements.getAll()):
-		if el.state in ["started","created"]:
-			continue
-		hostPref, sitePref = el.getLocationPrefs()
-		mainElement = el.mainElement()
-		if mainElement != None and el.element:
-			prevScor = getHostValue(host=mainElement.host,site=mainElement.host.site,elementTypes=mainElement.type,hostPrefs=hostPref,sitePrefs=sitePref)
-			best,bestScor = getBestHost(site=mainElement.host.site,hostPrefs=hostPref,sitePrefs=sitePref)
-		
-			#Compare best host with preference host and migrate to better one if possible
-			if el.element.host != best:
-				if bestScor - prevScor > THRESHOLD:
-					if el.checkMigrate():
-						el.action_migrate(best)
-				
+		el.try_reallocate()
 
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
@@ -1159,16 +1128,17 @@ def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None
 	if not connectionTypes: connectionTypes = []
 	if not elementTypes: elementTypes = []
 	
-	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 
-	logging.logMessage("select", category="host", result=host.name,
+	hosts.sort(key=lambda h: prefs[h], reverse=True)
+	logging.logMessage("select", category="host", result=hosts[0].name,
 					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
 					   site=site.name if site else None, element_types=elementTypes, connection_types=connectionTypes,
 					   network_types=networkKinds,
 					   host_prefs=dict([(k.name, v) for k, v in hostPrefs.iteritems()]),
 					   site_prefs=dict([(k.name, v) for k, v in sitePrefs.iteritems()]))
-	return host
+	
+	return hosts[0]
 
 
 @cached(timeout=3600, autoupdate=True)
@@ -1260,7 +1230,7 @@ AVG_MAXIMUM = 0.8
 			
 		
 @util.wrap_task
-def host_management():
+def dynamic_allocation():
 	
 	import statistics
 	
@@ -1277,29 +1247,25 @@ def host_management():
 		
 			
 def host_deactivation():
-	hosts = checkForHostDeactivation()
-	for host in hosts:
-		host.reallocate()
-		
-		for el in HostElement.objects.filter(host = host):
-			
-			new_hosts,new_hosts_pref = getHostList(site = host.site)
-			new_hosts.remove(host)
+
+	reallocate()
+	checkForHostDeactivation()
 	
-			new_hosts.sort(key=lambda h: new_hosts_pref[h], reverse=True)		
-			el.action("migrate",new_hosts[0].name)
-			
-			if not HostElement.objects.filter(host = host).exists():
-				host.allow_deactivation() 
+	for host in Host.objects.filer(detachable=True):
+		if host.fixedPref < -1000:
+			host.modify({'detached':True})
+		
+
 	
 def host_allocation():
-		hosts = []
-		for host in Host.objects.filter(detached = True):
-			hosts.append((host,getHostValue(host)))
-			
-		if hosts.exists():
-			hosts.sort(key=lambda h: h[1], reverse=True)
-			hosts[0][0].action('allocate')
+		hosts, prefs = getHostList()
+		
+		hosts.sort(key=lambda h: prefs[h], reverse=True)
+		
+		hosts_detached = filter(lambda x: x.detached==True, hosts)
+		
+		if hosts_detached != []:
+			hosts_detached[0].modify({'detached':False})
 		#else:
 			#TODO: Do something to chose the best technology to allocate new hosts
 	
@@ -1307,4 +1273,5 @@ def host_allocation():
 
 scheduler.scheduleRepeated(config.HOST_UPDATE_INTERVAL, synchronize)  # @UndefinedVariable
 scheduler.scheduleRepeated(3600, synchronizeComponents)  # @UndefinedVariable
-scheduler.scheduleRepeated(300, host_management)  # @UndefinedVariable
+scheduler.scheduleRepeated(300, checkForHostDeactivation)  # @UndefinedVariable
+scheduler.scheduleRepeated(300, dynamic_allocation)  # @UndefinedVariable

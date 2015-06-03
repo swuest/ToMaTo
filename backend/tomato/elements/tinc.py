@@ -228,10 +228,12 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 
 
 	def checkMigrate(self):
-		return self._childsByState()[ST_PREPARED] != []
+		return self._childsByState()[ST_PREPARED] != [] or self._childsByState()[ST_CREATED] != []
 
 	def action_migrate(self,hst):
+		self._parallelChildActions(self._childsByState()[ST_CREATED], "migrate",hst)
 		self._parallelChildActions(self._childsByState()[ST_PREPARED], "migrate",hst)
+		
 
 	def upcast(self):
 		return self
@@ -345,20 +347,21 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		self.setState(ST_PREPARED, True)
 		
 	def checkMigrate(self):		
-		return self.state in [ST_PREPARED]
+		return self.state in [ST_CREATED,ST_PREPARED]
 		
-	def action_migrate(self,host):		
-		from ..host import Host
-		
-		host = Host.objects.filter(name = host)
-		
-		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
-		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+	def try_migrate(self):
+			
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
-
+		if self.state in [ST_CREATED]: return
+		
+		hPref, sPref = self.getLocationPrefs()
+		host_ = host.select(elementTypes=["tinc"], hostPrefs=hPref, sitePrefs=sPref)
+		UserError.check(host_, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+		
+		if host_.name == self.element.host.name: return		
+		
 		self.action("destroy")
-	
-		self.element = host.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
+		self.element = host_.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
 		self.save()
 		self.setState(ST_PREPARED, True)	
 		

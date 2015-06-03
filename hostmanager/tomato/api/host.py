@@ -275,9 +275,6 @@ def host_networks():
 		res.append(data)
 	return res
 
-def host_deactivate():
-	print("Deactivated")
-
 from .. import dump, elements, connections, resources, config
 from ..lib.cmd import hostinfo, net, dhcp #@UnresolvedImport
 import time
