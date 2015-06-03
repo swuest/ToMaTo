@@ -266,8 +266,9 @@ class VMElement(elements.Element):
 		#Set new element and save it
 		self.element = new_el
 		self.save()
+		
 		for iface in self.getChildren():
-			iface._create()
+			iface.action("migrate",host)
 		self.element.action("prepare")
 		
 		self.setState(ST_PREPARED, True)
@@ -338,7 +339,25 @@ class VMInterface(elements.Element):
 			self.save()
 
 	def checkMigrate(self):
-		return False
+		return self.state in ST_PREPARED
+	
+	def action_migrate(self,host):
+		from ..host import Host
+		
+		host = Host.objects.filter(name = host)
+		
+		UserError.check(host, code=UserError.NO_RESOURCES, message="Host not found",data={"type": self.TYPE})
+		UserError.check(self.element.host.name != host.name, code=UserError.UNSUPPORTED_ACTION, message="Migrating to the same host not allowed",data={"type": self.TYPE})
+		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
+				
+		parEl = self.getParent().element
+		assert parEl
+		attrs = self._remoteAttrs()
+		element = parEl.createChild(self.Type, attrs=attrs, ownerElement=self)
+		
+		self.element.remove()
+		self.element = element
+		self.save()
 
 	def readyToConnect(self):
 		return self.state == ST_STARTED

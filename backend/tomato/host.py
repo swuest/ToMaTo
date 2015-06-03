@@ -1034,15 +1034,27 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 	if host.detachable:
 		host_elements = HostElement.objects.filter(host = host)
 		n = 0
+		#Count all on this host deployed elements 
 		for el in host_elements:
 			if el.state in ["started"]:
 				n+=1
+		#If we have less than 10, "mark" him as possible candidate for detaching
 		if n <= 10:
 			pref -= 50
-		if n > 10:
+		elif n > 10:
 			pref += 25
 	else:
 		pref += 25 
+	
+	#We need to take a view on the given resources of an host
+	#Give the CPU's some points
+	pref += host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg']/1000
+	
+	#Points for free disc space
+	pref += host.hostinfo['resources']['diskspace']['data']['free']/10000000
+	
+	#Points for Memory
+	pref += host.hostinfo['resources']['diskspace']['memory']['total']/1000000
 		
 	if host in hostPrefs:
 		pref += hostPrefs[host]
@@ -1083,23 +1095,38 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			hosts.append(host)
 	if hosts != []:
 		hosts.sort(key=	lambda h: prefs[h], reverse=True)
+	else:
+		hosts = hosts_all.sort(key=	lambda h: prefs[h], reverse=True)
 	return hosts[0], prefs[hosts[0]]
 	
 def checkForHostDeactivation():
 	hosts, prefs = getHostList()
 	candidates = []
 	candidates_prefs = []
-	for host_ in hosts:
-		if host_.detachable:
-			host_elements = HostElement.objects.filter(host = host_)
-			n = 0
-			for el in host_elements:
-				if el.state in ["started"]:
-					n+=1
-			if n == 0:
-				candidates.append(host_)
-				candidates_prefs.append((host_, prefs[host_]))
-	candidates.sort(key=lambda h: prefs[h], reverse=True)
+	
+		
+
+	import statistics
+	
+	avg = []
+	for h in getHostList():
+		avg.append(h.getLoad())
+		
+	avg = statistics.mean(avg)
+
+	if avg < AVG_MINIMUM:
+		for host_ in hosts:
+			if host_.detachable:
+				host_elements = HostElement.objects.filter(host = host_)
+				n = 0
+				for el in host_elements:
+					if el.state in ["started"]:
+						n+=1
+				if n == 0:
+					candidates.append(host_)
+					candidates_prefs.append((host_, prefs[host_]))
+		candidates.sort(key=lambda h: prefs[h], reverse=True)
+		
 	return candidates
 	
 def reallocate():
@@ -1224,11 +1251,16 @@ def synchronizeComponents():
 	for hcon in HostConnection.objects.all():
 		hcon.synchronize()
 		
+		
+		
+#TODO: Maybe put into backend config file?
+#AVG load needed for host deactivation	
+AVG_MINIMUM = 0.4
+AVG_MAXIMUM = 0.8
+			
+		
 @util.wrap_task
 def host_management():
-	
-	AVG_MINIMUM = 0.4
-	AVG_MAXIMUM = 0.8
 	
 	import statistics
 	
@@ -1237,7 +1269,7 @@ def host_management():
 		avg.append(h.getLoad())
 		
 	avg = statistics.mean(avg)
-	print(avg)
+	
 	if avg < AVG_MINIMUM:		
 		host_deactivation()
 	elif avg >= AVG_MAXIMUM:
