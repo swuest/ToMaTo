@@ -23,6 +23,7 @@ from ..lib.error import UserError, InternalError
 from ..lib.util import upload
 import time
 import urllib
+from tomato.config import MIGRATION_TRESHOLD
 
 ST_CREATED = "created"
 ST_PREPARED = "prepared"
@@ -246,23 +247,26 @@ class VMElement(elements.Element):
 	
 		
 	def try_migrate(self):
-		
 				
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
 		if self.state in [ST_CREATED]: return
 		
 		hPref, sPref = self.getLocationPrefs()
-		host_ = host.select(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
-		UserError.check(host_, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
-		if host_.name == self.element.host.name: return		
+		bestHost,bestPref = host.getBestHost(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+
+		hostScore = host.getHostScore(self.element.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		
+		if bestPref > hostScore*MIGRATION_TRESHOLD:
+			return		
 		
 		
 		#Download template. Receive download_grant from template and save it to a tempfile?
 		urllib.urlretrieve(self.element.host.grantUrl(self.action("download_grant"), "download"), self.name+"_tmp_image.tar.gz")
 		
 		#Create identical element on new host
-		new_el = host_.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
+		new_el = bestHost.createElement(self.TYPE, parent=None, attrs=self.attrs, ownerElement=self)
 
 		#Kill old element on old host
 		self.element.action("destroy")
@@ -277,7 +281,7 @@ class VMElement(elements.Element):
 		
 		self.setState(ST_PREPARED, True)
 		
-		upload(host_.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
+		upload(bestHost.grantUrl(new_el.action("upload_grant"),"upload"),"tmp_image.tar.gz")
 		new_el.action("upload_use")	
 			
 	def action_migrate(self):
@@ -353,6 +357,8 @@ class VMInterface(elements.Element):
 			
 		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
 		if self.state in [ST_CREATED]: return
+			
+		
 			
 		parEl = self.getParent().element
 		assert parEl

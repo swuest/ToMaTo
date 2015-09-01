@@ -25,6 +25,8 @@ from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
+from tomato.elements.generic import ST_PREPARED
+from tomato.config import AVG_MINIMUM
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -1022,7 +1024,7 @@ def create(name, site, attrs=None):
 	return host
 
 
-def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
+def getHostScore(host, site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
 	if not sitePrefs: sitePrefs = {}
 	if not hostPrefs: hostPrefs = {}
 	if not networkKinds: networkKinds = []
@@ -1031,6 +1033,7 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 	pref = 0.0
 	pref -= host.componentErrors * 25  # discourage hosts with previous errors
 	pref -= host.getLoad() * 100  # up to -100 points for load
+	pref -= len(HostElement.objects.filter(host = host));
 	pref += host.fixedPref
 
 	if host in hostPrefs:
@@ -1039,7 +1042,7 @@ def getHostValue(host, site=None, elementTypes=None, connectionTypes=None, netwo
 		pref += sitePrefs[host.site]
 	return pref
 
-def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None):
+def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None, detached=False):
 	if not sitePrefs: sitePrefs = {}
 	if not hostPrefs: hostPrefs = {}
 	if not networkKinds: networkKinds = []
@@ -1056,69 +1059,125 @@ def getHostList(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 			continue
 		if set(networkKinds) - set(host.getNetworkKinds()):
 			continue
-		if host.detached:
+		if host.detached and detached:
 			continue
 		hosts.append(host)
 	UserError.check(hosts, code=UserError.INVALID_CONFIGURATION, message="No hosts found for requirements")
-	prefs = dict([(h, getHostValue(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
+	prefs = dict([(h, getHostScore(h, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)) for h in hosts])
+	
 	return hosts, prefs
 
-def getBestHost(hostList):
+def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=None, hostPrefs=None, sitePrefs=None, detached=False):
+	if not sitePrefs: sitePrefs = {}
+	if not hostPrefs: hostPrefs = {}
+	if not networkKinds: networkKinds = []
+	if not connectionTypes: connectionTypes = []
+	if not elementTypes: elementTypes = []
+	all_ = getAll(site=site) if site else getAll()
+	bestHost = None;
+	bestScore = None;
 	
-	hosts, prefs = hostList
-	
-	return hosts[0], prefs[hosts[0]]
+	for host in all_:
+		score = getHostScore(host, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs))
+		if(score > bestScore):
+			bestHost = host;
+			bestScore = score;
+			
+			
+	return bestHost, bestScore
 	
 @util.wrap_task
-def checkForHostDeactivation():
+def loadInfluencer():
+	import statistics as stat
+	
+	
 	hosts = Host.objects.filter(detached=False,enabled=True)
 		
-	sum_free_cpu_power = 0
-	sum_free_disc_space = 0
-	sum_free_memory = 0
+		
+		
+	sum_cpu_power = 0
+	sum_disc_space = 0
+	sum_memory = 0
 	
-	fixedPref = 0
 	
-	#Get a sum of all free resources of all hosts 
+	cloud_cpu_load =[]
+	cloud_memory_used=[]
+	cloud_disk_space_used=[]
+	#Get a sum of all resources of all hosts
 	for host in hosts:
-		sum_free_cpu_power += (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])*(1-host.getLoad())
-		sum_free_disc_space += host.hostinfo['resources']['diskspace']['data']['free']
-		sum_free_memory += host.hostinfo['resources']['diskspace']['memory']['total']-host.hostinfo['resources']['diskspace']['memory']['used']
-			
-	#Check for hosts that can fit into the free resources of all 
+		
+		cloud_cpu_load.append(host.getLoad())
+		cloud_memory_used.append(host.hostinfo['resources']['diskspace']['memory']['used'])
+		cloud_disk_space_used.append(host.hostinfo['resources']['diskspace']['data']['used']/host.hostinfo['resources']['diskspace']['data']['total'])
+		
+		sum_cpu_power += (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])
+		sum_disc_space += host.hostinfo['resources']['diskspace']['data']['total']
+		sum_memory += host.hostinfo['resources']['diskspace']['memory']['total']
+	
+	
+	
+	avgLoad = []
+	avgLoad.append(stat.mean(cloud_cpu_load))
+	avgLoad.append(stat.mean(cloud_memory_used/sum_memory)
+	avgLoad.append(stat.mean(cloud_disk_space_used/sum_disc_space))
+	
+	
+	cloud_load = min(max(avgLoad),1.0)
+	#If the average load is not less or equal to the defined MINIMUM, stop this function
+	
+				
+	#Check for hosts that can fit into the resources of the cloud
 	for host in Host.objects.filter(detachable=True,enabled=True):
 		
 		
-		#Fixed Points for being detachable
-		fixedPref=-25
+	    fixedPref = 0
 		
-		host_cpu_power_used = (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])*host.getLoad()
-		host_disc_space_used = host.hostinfo['resources']['diskspace']['data']['used']
-		host_memory_used = host.hostinfo['resources']['diskspace']['memory']['used']
+		host_cpu_power = (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])
+		host_disc_space = host.hostinfo['resources']['diskspace']['data']['used']
+		host_memory = host.hostinfo['resources']['diskspace']['memory']['used']
+		host_load = host.getLoad()
+		
 		
 		#Check for active elements and connections and reduce fixedPref for each
 		host_elements = HostElement.objects.filter(host = host)	
 		host_connections = HostConnection.objects.filter(host = host)	
-		if host_elements == [] and host_connections == []:
-			fixedPref -=100
-		#If we can fit the used resources of a detachable host into the other hosts, just do so
-		if host_cpu_power_used < (sum_free_cpu_power-host_cpu_power_used):
-			if host_disc_space_used < (sum_free_disc_space - host_disc_space_used):
-				if host_memory_used < (sum_free_memory - host_memory_used):
-					fixedPref -= 200
-					if host_elements == [] and host_connections == []:
-						#He has no active elements and we can handle his load
-						fixedPref -=900
+		
+		if(cloud_load> AVG_MINIMUM):
+			host.fixedPref = 0;
+		else:	
+			fixedPref -= 25;
 			
+			
+	
+			avgLoad_tmp = []
+			avgLoad.append(stat.mean(cloud_cpu_load.remove(host_load))))
+			avgLoad.append(stat.mean(cloud_memory_used/(sum_memory-host_memory))
+			avgLoad.append(stat.mean(cloud_disk_space_used/(sum_disc_space-host_disc_space))
+
+			tmp_cloud_load = min(max(avgLoad),1.0)
+			
+			
+					
+			#If we can fit the used resources of a detachable host into the other hosts, just do so
+			if tmp_cloud_load < AVG_MAXIMUM:
+						fixedPref -= 200
+						
+						if host_elements == [] and host_connections == []:
+							#He has no active elements and we can handle his load
+							fixedPref -=900
 				
-		host.fixedPref = fixedPref
+					
+			host.fixedPref = fixedPref
 	
-def reallocate():
+def checkMigration():
 	
-	import elements
+	import elements as ele
 	#Walk through all elements and think about reallocating them.
-	for el in  list(elements.getAll()):
-		el.try_reallocate()
+	elementList = list(ele.getAll());
+	
+	for el in elementList:
+		if(el.state = ST_PREPARED):
+			el.try_migrate()
 
 
 def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None, hostPrefs=None, sitePrefs=None):
@@ -1128,17 +1187,9 @@ def select(site=None, elementTypes=None, connectionTypes=None, networkKinds=None
 	if not connectionTypes: connectionTypes = []
 	if not elementTypes: elementTypes = []
 	
-	hosts, prefs = getHostList(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
-
-	hosts.sort(key=lambda h: prefs[h], reverse=True)
-	logging.logMessage("select", category="host", result=hosts[0].name,
-					   prefs=dict([(k.name, v) for k, v in prefs.iteritems()]),
-					   site=site.name if site else None, element_types=elementTypes, connection_types=connectionTypes,
-					   network_types=networkKinds,
-					   host_prefs=dict([(k.name, v) for k, v in hostPrefs.iteritems()]),
-					   site_prefs=dict([(k.name, v) for k, v in sitePrefs.iteritems()]))
+	host, pref = getBestHost(site, elementTypes, connectionTypes,networkKinds, hostPrefs, sitePrefs)
 	
-	return hosts[0]
+	return host;
 
 
 @cached(timeout=3600, autoupdate=True)
@@ -1223,10 +1274,6 @@ def synchronizeComponents():
 		
 		
 		
-#TODO: Maybe put into backend config file?
-#AVG load needed for host deactivation	
-AVG_MINIMUM = 0.4
-AVG_MAXIMUM = 0.8
 			
 		
 @util.wrap_task
@@ -1248,12 +1295,17 @@ def dynamic_allocation():
 			
 def host_deactivation():
 
-	reallocate()
-	checkForHostDeactivation()
+	loadInfluencer()
 	
-	for host in Host.objects.filer(detachable=True):
+	hosts,prefs = getHostList()
+
+	hosts = filter(lambda x:  not x.detached and x.detachable, hosts)
+
+	if not hosts == []:
+		host = hosts[-1]
 		if host.fixedPref < -1000:
 			host.modify({'detached':True})
+			#host.deactivate()
 		
 
 	
@@ -1267,11 +1319,12 @@ def host_allocation():
 		if hosts_detached != []:
 			hosts_detached[0].modify({'detached':False})
 		#else:
-			#TODO: Do something to chose the best technology to allocate new hosts
+			#TODO: Do something to chose the correct cloud provider plugin to allocate new hosts
 	
 
 
 scheduler.scheduleRepeated(config.HOST_UPDATE_INTERVAL, synchronize)  # @UndefinedVariable
 scheduler.scheduleRepeated(3600, synchronizeComponents)  # @UndefinedVariable
+scheduler.scheduleRepeated(1800, checkMigration)  # @UndefinedVariable
 scheduler.scheduleRepeated(300, checkForHostDeactivation)  # @UndefinedVariable
 scheduler.scheduleRepeated(300, dynamic_allocation)  # @UndefinedVariable

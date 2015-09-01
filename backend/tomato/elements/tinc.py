@@ -22,6 +22,7 @@ from .. import elements, host
 from ..lib.attributes import Attr #@UnresolvedImport
 from generic import ST_CREATED, ST_PREPARED, ST_STARTED
 from ..lib.error import UserError, assert_
+from tomato.config import MIGRATION_TRESHOLD
 
 class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 	name_attr = Attr("name", desc="Name", type="str")
@@ -230,7 +231,7 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 	def checkMigrate(self):
 		return self._childsByState()[ST_PREPARED] != [] or self._childsByState()[ST_CREATED] != []
 
-	def action_migrate(self,hst):
+	def try_migration(self,hst):
 		self._parallelChildActions(self._childsByState()[ST_CREATED], "migrate",hst)
 		self._parallelChildActions(self._childsByState()[ST_PREPARED], "migrate",hst)
 		
@@ -355,13 +356,19 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		if self.state in [ST_CREATED]: return
 		
 		hPref, sPref = self.getLocationPrefs()
-		host_ = host.select(elementTypes=["tinc"], hostPrefs=hPref, sitePrefs=sPref)
-		UserError.check(host_, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
-		if host_.name == self.element.host.name: return		
+		
+		bestHost,bestPref = host.getBestHost(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
+		
+		hostScore = host.getHostScore(self.element.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		
+		if bestPref > hostScore*MIGRATION_TRESHOLD:
+			return		
+		
 		
 		self.action("destroy")
-		self.element = host_.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
+		self.element = bestHost.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
 		self.save()
 		self.setState(ST_PREPARED, True)	
 		
