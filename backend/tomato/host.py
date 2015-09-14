@@ -26,6 +26,7 @@ from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
 from tomato.config import AVG_MINIMUM, AVG_MAXIMUM
+from tomato.elements.generic import ST_STARTED
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -1088,9 +1089,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 @util.wrap_task
 def loadInfluencer():
 	import statistics as stat
-	
-	print("Load Influencer")
-	
+		
 	hosts = Host.objects.filter(detached=False,enabled=True)
 		
 		
@@ -1129,7 +1128,10 @@ def loadInfluencer():
 	
 				
 	#Check for hosts that can fit into the resources of the cloud
-	for host in Host.objects.filter(detachable=True,enabled=True):
+	detachableHosts = Host.objects.filter(detachable=True,enabled=True)
+	detachableHosts = sorted(detachableHosts, key = lambda host: (len(HostElement.objects.filter(host = host,state = ST_STARTED)), getHostScore(host)))
+	
+	for host in detachableHosts:
 		
 		
 		fixedPref = 0
@@ -1143,7 +1145,7 @@ def loadInfluencer():
 		
 		
 		#Check for active elements and connections and reduce fixedPref for each
-		host_elements = HostElement.objects.filter(host = host)	
+		host_elements = HostElement.objects.filter(host = host,state = ST_STARTED)	
 		host_connections = HostConnection.objects.filter(host = host)	
 		
 		if(cloud_load> AVG_MINIMUM):
@@ -1154,11 +1156,11 @@ def loadInfluencer():
 			
 	
 			avgLoad_tmp = []
-			avgLoad.append(stat.mean(cloud_cpu_load.remove(host_load)))
-			avgLoad.append(stat.mean(cloud_memory_used/(sum_memory-host_memory)))
-			avgLoad.append(stat.mean(cloud_disk_space_used/(sum_disc_space-host_disc_space)))
+			avgLoad_tmp.append(stat.mean(cloud_cpu_load.remove(host_load)))
+			avgLoad_tmp.append(stat.mean(cloud_memory_used/(sum_memory-host_memory)))
+			avgLoad_tmp.append(stat.mean(cloud_disk_space_used/(sum_disc_space-host_disc_space)))
 
-			tmp_cloud_load = min(max(avgLoad),1.0)
+			tmp_cloud_load = min(max(avgLoad_tmp),1.0)
 			
 			
 					
@@ -1314,7 +1316,7 @@ def host_deactivation():
 
 	if not hosts == []:
 		host = hosts[-1]
-		if host.fixedPref < -1000:
+		if host.fixedPref < -1000 and HostElement.objects.filter(host = host) == []:
 			host.modify({'detached':True})
 			#host.deactivate()
 		
