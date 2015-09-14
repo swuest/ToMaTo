@@ -120,15 +120,14 @@ class UDP_Endpoint(elements.Element):
 
 	def try_migrate(self):		
 			
-		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
 		if self.state in [ST_CREATED]: return
 		
 		host_ = host.select(elementTypes=[self.remoteType()])
 		
-		bestHost,bestPref = host.getBestHost(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		bestHost,bestPref = host.getBestHost(elementTypes=[self.remoteType()])
 		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
-		hostScore = host.getHostScore(self.element.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		hostScore = host.getHostScore(self.host,elementTypes=[self.remoteType()])
 		
 		if bestPref > hostScore*MIGRATION_TRESHOLD:
 			return		

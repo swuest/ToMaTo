@@ -248,7 +248,6 @@ class VMElement(elements.Element):
 		
 	def try_migrate(self):
 				
-		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
 		if self.state in [ST_CREATED]: return
 		
 		hPref, sPref = self.getLocationPrefs()
@@ -256,7 +255,7 @@ class VMElement(elements.Element):
 		bestHost,bestPref = host.getBestHost(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
 		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 
-		hostScore = host.getHostScore(self.element.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
+		hostScore = host.getHostScore(self.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
 		
 		if bestPref > hostScore*MIGRATION_TRESHOLD:
 			return		
@@ -355,7 +354,6 @@ class VMInterface(elements.Element):
 	
 	def try_migrate(self):
 			
-		UserError.check(self.element.checkMigrate(), code=UserError.UNSUPPORTED_ACTION, message="Element can't be migrated",data={"type": self.TYPE})
 		if self.state in [ST_CREATED]: return
 			
 		

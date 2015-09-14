@@ -25,8 +25,7 @@ from .lib import anyjson as json
 from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
-from tomato.elements.generic import ST_PREPARED
-from tomato.config import AVG_MINIMUM
+from tomato.config import AVG_MINIMUM, AVG_MAXIMUM
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -1078,7 +1077,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 	bestScore = None;
 	
 	for host in all_:
-		score = getHostScore(host, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs))
+		score = getHostScore(host, site, elementTypes, connectionTypes, networkKinds, hostPrefs, sitePrefs)
 		if(score > bestScore):
 			bestHost = host;
 			bestScore = score;
@@ -1090,6 +1089,7 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 def loadInfluencer():
 	import statistics as stat
 	
+	print("Load Influencer")
 	
 	hosts = Host.objects.filter(detached=False,enabled=True)
 		
@@ -1106,19 +1106,21 @@ def loadInfluencer():
 	#Get a sum of all resources of all hosts
 	for host in hosts:
 		
-		cloud_cpu_load.append(host.getLoad())
-		cloud_memory_used.append(host.hostinfo['resources']['diskspace']['memory']['used'])
-		cloud_disk_space_used.append(host.hostinfo['resources']['diskspace']['data']['used']/host.hostinfo['resources']['diskspace']['data']['total'])
+		hostInfo = host.hostinfo
 		
-		sum_cpu_power += (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])
-		sum_disc_space += host.hostinfo['resources']['diskspace']['data']['total']
-		sum_memory += host.hostinfo['resources']['diskspace']['memory']['total']
+		cloud_cpu_load.append(host.getLoad())
+		cloud_memory_used.append(hostInfo['resources']['diskspace']['memory']['used'])
+		cloud_disk_space_used.append(hostInfo['resources']['diskspace']['data']['used']/hostInfo['resources']['diskspace']['data']['total'])
+		
+		sum_cpu_power += (hostInfo['resources']['cpus_present']['count']*hostInfo['resources']['cpu_present']['bogomips_avg'])
+		sum_disc_space += hostInfo['resources']['diskspace']['data']['total']
+		sum_memory += hostInfo['resources']['diskspace']['memory']['total']
 	
 	
 	
 	avgLoad = []
 	avgLoad.append(stat.mean(cloud_cpu_load))
-	avgLoad.append(stat.mean(cloud_memory_used/sum_memory)
+	avgLoad.append(stat.mean(cloud_memory_used/sum_memory))
 	avgLoad.append(stat.mean(cloud_disk_space_used/sum_disc_space))
 	
 	
@@ -1130,11 +1132,13 @@ def loadInfluencer():
 	for host in Host.objects.filter(detachable=True,enabled=True):
 		
 		
-	    fixedPref = 0
+		fixedPref = 0
 		
-		host_cpu_power = (host.hostinfo['resources']['cpus_present']['count']*host.hostinfo['resources']['cpu_present']['bogomips_avg'])
-		host_disc_space = host.hostinfo['resources']['diskspace']['data']['used']
-		host_memory = host.hostinfo['resources']['diskspace']['memory']['used']
+		hostInfo = host.hostinfo
+		
+		host_cpu_power = (hostInfo['resources']['cpus_present']['count']*hostInfo['resources']['cpu_present']['bogomips_avg'])
+		host_disc_space = hostInfo['resources']['diskspace']['data']['used']
+		host_memory = hostInfo['resources']['diskspace']['memory']['used']
 		host_load = host.getLoad()
 		
 		
@@ -1150,9 +1154,9 @@ def loadInfluencer():
 			
 	
 			avgLoad_tmp = []
-			avgLoad.append(stat.mean(cloud_cpu_load.remove(host_load))))
-			avgLoad.append(stat.mean(cloud_memory_used/(sum_memory-host_memory))
-			avgLoad.append(stat.mean(cloud_disk_space_used/(sum_disc_space-host_disc_space))
+			avgLoad.append(stat.mean(cloud_cpu_load.remove(host_load)))
+			avgLoad.append(stat.mean(cloud_memory_used/(sum_memory-host_memory)))
+			avgLoad.append(stat.mean(cloud_disk_space_used/(sum_disc_space-host_disc_space)))
 
 			tmp_cloud_load = min(max(avgLoad),1.0)
 			
@@ -1172,11 +1176,14 @@ def loadInfluencer():
 def checkMigration():
 	
 	import elements as ele
+	
+	print("checkMigration")
+	from tomato.elements.generic import ST_PREPARED
 	#Walk through all elements and think about reallocating them.
 	elementList = list(ele.getAll());
 	
 	for el in elementList:
-		if(el.state = ST_PREPARED):
+		if(el.state == ST_PREPARED):
 			el.try_migrate()
 
 
@@ -1281,15 +1288,19 @@ def dynamic_allocation():
 	
 	import statistics
 	
+	print("dynamic allocation")
 	avg = []
 	for h in getHostList():
 		avg.append(h.getLoad())
 		
 	avg = statistics.mean(avg)
 	
-	if avg < AVG_MINIMUM:		
+	if avg < AVG_MINIMUM:	
+		print("Minimum")	
 		host_deactivation()
 	elif avg >= AVG_MAXIMUM:
+		
+		print("Maximum")
 		host_allocation()
 		
 			
@@ -1325,6 +1336,6 @@ def host_allocation():
 
 scheduler.scheduleRepeated(config.HOST_UPDATE_INTERVAL, synchronize)  # @UndefinedVariable
 scheduler.scheduleRepeated(3600, synchronizeComponents)  # @UndefinedVariable
-scheduler.scheduleRepeated(1800, checkMigration)  # @UndefinedVariable
-scheduler.scheduleRepeated(300, checkForHostDeactivation)  # @UndefinedVariable
+scheduler.scheduleRepeated(300, checkMigration)  # @UndefinedVariable
+scheduler.scheduleRepeated(300, loadInfluencer)  # @UndefinedVariable
 scheduler.scheduleRepeated(300, dynamic_allocation)  # @UndefinedVariable
