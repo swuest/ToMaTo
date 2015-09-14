@@ -208,6 +208,7 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 		bestHost,bestPref = host.getBestHost(site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
 		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
+		
 		hostScore = host.getHostScore(self.element.host,site=self.site, elementTypes=[self.TYPE]+self.CAP_CHILDREN.keys(), hostPrefs=hPref, sitePrefs=sPref)
 		
 		if bestPref > hostScore*MIGRATION_TRESHOLD:
@@ -222,7 +223,8 @@ class External_Network_Endpoint(elements.generic.ConnectingElement, elements.Ele
 		else:
 			self.network = r_network.getInstance(host, self.kind)			
 		attrs = {"network": self.network.network.kind}
-		self.element.action("destroy")
+		
+		self.action_destroy()
 		self.element = bestHost.createElement("external_network", parent=None, attrs=attrs, ownerElement=self)
 		self.setState(ST_STARTED)
 		self.triggerConnectionStart()

@@ -1334,6 +1334,6 @@ def host_allocation():
 
 scheduler.scheduleRepeated(config.HOST_UPDATE_INTERVAL, synchronize)  # @UndefinedVariable
 scheduler.scheduleRepeated(3600, synchronizeComponents)  # @UndefinedVariable
-scheduler.scheduleRepeated(300, checkMigration)  # @UndefinedVariable
+scheduler.scheduleRepeated(30, checkMigration)  # @UndefinedVariable
 scheduler.scheduleRepeated(300, loadInfluencer)  # @UndefinedVariable
 scheduler.scheduleRepeated(300, dynamic_allocation)  # @UndefinedVariable

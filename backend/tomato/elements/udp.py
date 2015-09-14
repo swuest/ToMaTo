@@ -127,14 +127,14 @@ class UDP_Endpoint(elements.Element):
 		bestHost,bestPref = host.getBestHost(elementTypes=[self.remoteType()])
 		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
-		hostScore = host.getHostScore(self.host,elementTypes=[self.remoteType()])
+		hostScore = host.getHostScore(self.element.host,elementTypes=[self.remoteType()])
 		
 		if bestPref > hostScore*MIGRATION_TRESHOLD:
 			return		
 		
 		
-		self.element.action("destroy")
-		self.element = bestHost.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
+		self.action_destroy()
+		self.element = bestHost.createElement(self.remoteType(), parent=None, attrs=attrs, ownerElement=self)
 		self.save()
 		self.setState(ST_PREPARED, True)
 

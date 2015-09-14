@@ -231,9 +231,25 @@ class Tinc_VPN(elements.generic.ConnectingElement, elements.Element):
 	def checkMigrate(self):
 		return self._childsByState()[ST_PREPARED] != [] or self._childsByState()[ST_CREATED] != []
 
-	def try_migration(self,hst):
-		self._parallelChildActions(self._childsByState()[ST_CREATED], "migrate",hst)
-		self._parallelChildActions(self._childsByState()[ST_PREPARED], "migrate",hst)
+	def try_migrate(self):
+		
+		childList = self._childsByState()[ST_PREPARED]
+		lock = threading.RLock()
+		class WorkerThread(threading.Thread):
+			def run(self):
+				while True:
+					with lock:
+						if not childList:
+							return
+						ch = childList.pop()
+					ch.try_migrate()
+		threads = []
+		for _ in xrange(0, min(len(childList), 10)):
+			thread = WorkerThread()
+			threads.append(thread)
+			thread.start()
+		for thread in threads:
+			thread.join()
 		
 
 	def upcast(self):
@@ -360,14 +376,14 @@ class Tinc_Endpoint(elements.generic.ConnectingElement, elements.Element):
 		bestHost,bestPref = host.getBestHost(elementTypes=["tinc"], hostPrefs=hPref, sitePrefs=sPref)
 		UserError.check(bestHost, code=UserError.NO_RESOURCES, message="No matching host found for element", data={"type": self.TYPE})
 		
-		hostScore = host.getHostScore(self.host,elementTypes=["tinc"], hostPrefs=hPref, sitePrefs=sPref)
+		hostScore = host.getHostScore(self.element.host,elementTypes=["tinc"], hostPrefs=hPref, sitePrefs=sPref)
 		
 		if bestPref > hostScore*MIGRATION_TRESHOLD:
 			return		
 		
 		
-		self.action("destroy")
-		self.element = bestHost.createElement(self.remoteType(), parent=None, attrs=self.attrs, ownerElement=self)
+		self.action_destroy()
+		self.element = bestHost.createElement(self.remoteType(), parent=None, attrs=attrs, ownerElement=self)
 		self.save()
 		self.setState(ST_PREPARED, True)	
 		
