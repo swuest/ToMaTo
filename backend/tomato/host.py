@@ -26,7 +26,6 @@ from auth import Flags
 from dumpmanager import DumpSource
 import time, hashlib, threading, datetime, zlib, base64, sys
 from tomato.config import AVG_MINIMUM, AVG_MAXIMUM
-from tomato.elements.generic import ST_STARTED
 
 class RemoteWrapper:
 	def __init__(self, url, host, *args, **kwargs):
@@ -1089,7 +1088,8 @@ def getBestHost(site=None, elementTypes=None, connectionTypes=None,networkKinds=
 @util.wrap_task
 def loadInfluencer():
 	import statistics as stat
-		
+	from tomato.elements.generic import ST_STARTED
+	
 	hosts = Host.objects.filter(detached=False,enabled=True)
 		
 		
@@ -1179,7 +1179,6 @@ def checkMigration():
 	
 	import elements as ele
 	
-	print("checkMigration")
 	from tomato.elements.generic import ST_PREPARED
 	#Walk through all elements and think about reallocating them.
 	elementList = list(ele.getAll());
@@ -1290,7 +1289,6 @@ def dynamic_allocation():
 	
 	import statistics
 	
-	print("dynamic allocation")
 	avg = []
 	for h in getHostList():
 		avg.append(h.getLoad())
@@ -1298,11 +1296,9 @@ def dynamic_allocation():
 	avg = statistics.mean(avg)
 	
 	if avg < AVG_MINIMUM:	
-		print("Minimum")	
 		host_deactivation()
 	elif avg >= AVG_MAXIMUM:
 		
-		print("Maximum")
 		host_allocation()
 		
 			

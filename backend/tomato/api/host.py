@@ -188,9 +188,6 @@ def host_remove(name):
 	h.remove()
 	host_list.invalidate()
 
-@checkauth
-def host_reallocate():
-	host.reallocate()
 
 @checkauth
 def host_users(name):
