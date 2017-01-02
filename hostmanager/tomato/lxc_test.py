@@ -1,6 +1,6 @@
 import lib.newcmd.virsh
 import sys
-from lib.constants import ActionName, StateName, TypeName
+from lib.constants import ActionName, StateName, TechName
 
 print str(sys.argv)
 command = sys.argv[1]
@@ -9,12 +9,12 @@ if sys.argv.__len__() >= 3 :
 	args = sys.argv[2]
 
 
-vir = lib.newcmd.virsh.virsh(TypeName.LXC)
+vir = lib.newcmd.virsh.virsh(TechName.LXC)
 
 if command == "start":
 	vir.vm_start(int(args))
 if command == "prepare":
-	vir.vm_prepare(int(args),type=TypeName.LXC)
+	vir.vm_prepare(int(args),type=TechName.LXC)
 if command == "stop":
 	vir.vm_stop(int(args), bool(sys.argv[3]))
 if command == "destroy":

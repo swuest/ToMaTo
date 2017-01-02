@@ -25,7 +25,7 @@ from ..lib.cmd import fileserver, process, net, path, CommandError #@UnresolvedI
 from ..lib.newcmd import virsh #@UnresolvedImport
 from ..lib.util import joinDicts #@UnresolvedImport
 from ..lib.error import UserError, InternalError
-from ..lib.constants import ActionName, StateName, TypeName
+from ..lib.constants import ActionName, StateName, TechName
 
 DHCP_CMDS = ["[ -e /sbin/dhclient ] && /sbin/dhclient -nw %s",
 			 "[ -e /sbin/dhcpcd ] && /sbin/dhcpcd %s"]
@@ -174,7 +174,7 @@ class LXC(elements.RexTFVElement,elements.Element):
 	template_attr = Attr("template", desc="Template", states=[StateName.CREATED, StateName.PREPARED], type="str", null=True)
 	template = models.ForeignKey(template.Template, null=True)
 
-	TYPE = TypeName.LXC
+	TYPE = TechName.LXC
 	CAP_ACTIONS = {
 		ActionName.PREPARE: [StateName.CREATED],
 		ActionName.DESTROY: [StateName.PREPARED],
@@ -207,14 +207,14 @@ class LXC(elements.RexTFVElement,elements.Element):
 		"timeout": elements.Element.timeout_attr
 	}
 	CAP_CHILDREN = {
-		TypeName.LXC_INTERFACE: [StateName.CREATED, StateName.PREPARED],
+		TechName.LXC_INTERFACE: [StateName.CREATED, StateName.PREPARED],
 	}
 	CAP_PARENT = [None]
 	DEFAULT_ATTRS = {"ram": 256, "diskspace": 10240}
 	DOC = DOC
 	__doc__ = DOC #@ReservedAssignment
 
-	vir = virsh.virsh(TypeName.LXC)
+	vir = virsh.virsh(TechName.LXC)
 
 
 	class Meta:
@@ -237,11 +237,11 @@ class LXC(elements.RexTFVElement,elements.Element):
 
 	def _checkState(self):
 		savedState = self.state
-		realState = self.vir.getState(self.id)
+		realState = self.vir.getState(self.vmid)
 		if savedState != realState:
 			self.setState(realState, True) #pragma: no cover
 		InternalError.check(savedState == realState, InternalError.WRONG_DATA, "Saved state is wrong",
-			data={"type": self.type, "id": self.id, "saved_state": savedState, "real_state": realState})
+			data={"type": self.type, "id": self.vmid, "saved_state": savedState, "real_state": realState})
 
 	def _template(self):
 		if self.template:
@@ -422,8 +422,8 @@ class LXC(elements.RexTFVElement,elements.Element):
 						 ram=self.ram,
 						 cpus=self.cpus,
 						 vncport=self.vncport,
-						 vncpassword=self.vncpassword,)
-		self.vir.addNetTun(self.vmid)
+						 vncpassword=self.vncpassword)
+
 		self.vir.addNetAdminCapabilitie(self.vmid)
 		self.setState(StateName.PREPARED, True)
 		# add all interfaces
@@ -437,12 +437,12 @@ class LXC(elements.RexTFVElement,elements.Element):
 
 	def action_start(self):
 		self._checkState()
-		if not net.bridgeExists("dummy"):
-			net.bridgeCreate("dummy")
-		net.ifUp("dummy")
-		self._vzctl(ActionName.START) #not using --wait since this might hang
+		#if not net.bridgeExists("dummy"):
+		#	net.bridgeCreate("dummy")
+		#net.ifUp("dummy")
+		self.vir.start(self.vmid)
 		self.setState(StateName.STARTED, True)
-		self._execute("while fgrep -q boot /proc/1/cmdline; do sleep 1; done")
+		#self._execute("while fgrep -q boot /proc/1/cmdline; do sleep 1; done")
 		for interface in self.getChildren():
 			ifName = self._interfaceName(interface.name)
 			InternalError.check(util.waitFor(lambda :net.ifaceExists(ifName)), "Interface did not start properly",
@@ -451,19 +451,21 @@ class LXC(elements.RexTFVElement,elements.Element):
 			if con:
 				con.connectInterface(self._interfaceName(interface.name))
 			interface._start() #configure after connecting to allow dhcp, etc.
-		self._setGateways()
-		net.freeTcpPort(self.vncport)
-		self.vncpid = cmd.spawnShell("while true; do vncterm -timeout 0 -rfbport %d -passwd %s -c bash -c 'while true; do vzctl enter %d; sleep 1; done'; sleep 1; done" % (self.vncport, self.vncpassword, self.vmid), useExec=False)
-		InternalError.check(util.waitFor(lambda :net.tcpPortUsed(self.vncport)), InternalError.ASSERTION,
-			"VNC server did not start")
+		#self._setGateways()
+		#net.freeTcpPort(self.vncport)
+		#self.vncpid = cmd.spawnShell("while true; do vncterm -timeout 0 -rfbport %d -passwd %s -c bash -c 'while true; do vzctl enter %d; sleep 1; done'; sleep 1; done" % (self.vncport, self.vncpassword, self.vmid), useExec=False)
+		#InternalError.check(util.waitFor(lambda :net.tcpPortUsed(self.vncport)), InternalError.ASSERTION,
+		#	"VNC server did not start")
 		if not self.websocket_port:
 			self.websocket_port = self.getResource("port")
-		if websockifyVersion:
-			net.freeTcpPort(self.websocket_port)
-			self.websocket_pid = cmd.spawn(["websockify", "0.0.0.0:%d" % self.websocket_port, "localhost:%d" % self.vncport, '--cert=/etc/tomato/server.pem'])
-			InternalError.check(util.waitFor(lambda :net.tcpPortUsed(self.websocket_port)),
-				InternalError.ASSERTION, "Websocket VNC wrapper did not start")
-				
+		self.vncpid, self.websocket_pid = self.vir.startVnc(self.vmid, self.vncpassword, self.vncport,
+															self.websocket_port, '/etc/tomato/server.pem')
+		#if websockifyVersion:
+			#	net.freeTcpPort(self.websocket_port)
+			#	self.websocket_pid = cmd.spawn(["websockify", "0.0.0.0:%d" % self.websocket_port, "localhost:%d" % self.vncport, '--cert=/etc/tomato/server.pem'])
+			#	InternalError.check(util.waitFor(lambda :net.tcpPortUsed(self.websocket_port)),
+			#		InternalError.ASSERTION, "Websocket VNC wrapper did not start")
+
 	def action_stop(self):
 		self._checkState()
 		for interface in self.getChildren():
@@ -659,7 +661,7 @@ class LXC_Interface(elements.Element):
 	used_addresses_attr = Attr("used_addresses", type=list, default=[])
 	used_addresses = used_addresses_attr.attribute()
 
-	TYPE = TypeName.LXC_INTERFACE
+	TYPE = TechName.LXC_INTERFACE
 	CAP_ACTIONS = {
 		elements.REMOVE_ACTION: [StateName.CREATED, StateName.PREPARED]
 	}

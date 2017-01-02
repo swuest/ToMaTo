@@ -1,5 +1,5 @@
 from util import run, CommandError, cmd, proc
-from ..constants import ActionName, StateName, TypeName
+from ..constants import ActionName, StateName, TechName
 from ..error import UserError, InternalError
 import time
 from util import LockMatrix, params, spawnDaemon, wait, net
@@ -44,17 +44,17 @@ class virsh:
 	imagepath = ""
 	original_image = ""
 
-	TYPE = TypeName.KVM
+	TYPE = TechName.KVM
 
 	HYPERVISOR_MAPPING = {
-		TypeName.LXC: "lxc://",
-		TypeName.KVM: "qemu:///session"
+		TechName.LXC: "lxc://",
+		TechName.KVM: "qemu:///session"
 	}
 	DRIVER_MAPPING = {
-		TypeName.KVMQM: "qcow2",
-		TypeName.KVM: "qcow2",
-		TypeName.LXC: "raw",
-		TypeName.OPENVZ: "raw",
+		TechName.KVMQM: "qcow2",
+		TechName.KVM: "qcow2",
+		TechName.LXC: "raw",
+		TechName.OPENVZ: "raw",
 	}
 	CAP_ACTIONS = {
 		ActionName.PREPARE: [StateName.CREATED],
@@ -113,7 +113,7 @@ class virsh:
 		driver_type = self.DRIVER_MAPPING[self.TYPE]
 
 
-		if self.TYPE == TypeName.KVM:
+		if self.TYPE == TechName.KVM:
 			cmd_ = ["virt-install",
 					"--connect", self.HYPERVISOR_MAPPING[self.TYPE],
 					"--name", "vm_%d" % vmid,
@@ -127,36 +127,14 @@ class virsh:
 					("--disk" if nlxtp_floppy_filename else ""), # Floppy device for nlXTP
 					("path=%s,device=floppy,cache=writethrough" % nlxtp_floppy_filename if nlxtp_floppy_filename else ""),
 					"--graphics", "vnc%s%s,keymap=%s" % (
-						(",port=%s" % vncport if vncpassword else ""),
+						(",port=%s" % vncport if vncport else ""),
 						(",password=%s" % vncpassword if vncpassword else ""),
 						keyboard),
 					"--nonetworks", #Don't create automatically a default bridge
 					"--noautoconsole", # Don't enter a console on the device after install
 					"--noreboot"] #Don't boot the device after install
 		else:
-			cmd_ = ["virt-install",
-					"--connect", self.HYPERVISOR_MAPPING[self.TYPE],
-					"--name", "vm_%d" % vmid,
-					"--ram", str(ram),
-					"--vcpus", str(cpus),
-					# "--os-type", ostype,
-					"--import",  # Use the image given to install a guest os
-					"--filesystem", "%s,/,type=mount" % (imagepath),
-					# VDA ,device=disk,driver_type=%s,bus=virtio, % driver_type
-					#("--disk" if nlxtp_device_filename else ""),
-					#("path=%s" % nlxtp_device_filename  # ,device=disk,bus=virtio
-					# if nlxtp_device_filename else ""),  # Virtual 'big' device for nlxtp
-					#("--disk" if nlxtp_floppy_filename else ""),  # Floppy device for nlXTP
-					#(
-					#"path=%s,device=floppy,cache=writethrough" % nlxtp_floppy_filename if nlxtp_floppy_filename else ""),
-					"--host-devices","/dev/net/tun"
-					"--graphics", "vnc%s%s,keymap=%s" % (
-						(",port=%s" % vncport if vncpassword else ""),
-						(",password=%s" % vncpassword if vncpassword else ""),
-						keyboard),
-					"--nonetworks",  # Don't create automatically a default bridge
-					"--noautoconsole",  # Don't enter a console on the device after install
-					"--noreboot"]  # Don't boot the device after install
+			cmd_ = g
 
 		cmd.run(cmd_)
 
@@ -383,9 +361,9 @@ class virsh:
 		self.root = self.tree.getroot()
 
 		if hda:
-			if type == TypeName.KVM:
+			if type == TechName.KVM:
 				self.root.find("./devices/disk/target[@dev='vda']/../source").set("file",hda)
-			if type == TypeName.LXC:
+			if type == TechName.LXC:
 				self.root.find("./devices/filesystem/target[@dir='/']/../source").set("dir",hda)
 		#if fda:
 		#if hdb:

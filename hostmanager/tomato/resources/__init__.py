@@ -82,7 +82,14 @@ class Resource(db.ChangesetMixin, attributes.Mixin, models.Model):
 		except:
 			import traceback
 			traceback.print_exc()
-		raise InternalError(message="Failed to cast resource", code=InternalError.UPCAST, data={"id": self.id, "type": self.type})
+			if self.type == "template":
+				raise InternalError(message="Failed to cast resource", code=InternalError.UPCAST, data={"id": self.id,
+																										"type": self.type,
+																										"tech": self.attrs['tech'],
+																										"name": self.attrs['name']})
+			else:
+				raise InternalError(message="Failed to cast resource", code=InternalError.UPCAST,
+									data={"id": self.id, "type": self.type})
 
 	def modify(self, attrs):
 		logging.logMessage("modify", category="resource", type=self.type, id=self.id, attrs=attrs)

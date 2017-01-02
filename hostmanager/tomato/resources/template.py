@@ -24,13 +24,13 @@ from ..lib.newcmd import aria2
 from ..lib.newcmd.util import fs
 from ..lib.error import UserError, InternalError #@UnresolvedImport
 import os, threading
-from ..lib.constants import TypeName
+from ..lib.constants import TechName, TypeName
 
 PATTERNS = {
-	TypeName.KVMQM: "%s.qcow2",
-	TypeName.KVM: "%s.qcow2",
-	TypeName.OPENVZ: "%s.tar.gz",
-	TypeName.LXC: "%s.tar.gz",
+	TechName.KVMQM: "%s.qcow2",
+	TechName.KVM: "%s.qcow2",
+	TechName.OPENVZ: "%s.tar.gz",
+	TechName.LXC: "%s.tar.gz",
 	TypeName.REPY: "%s.repy",
 }
 
