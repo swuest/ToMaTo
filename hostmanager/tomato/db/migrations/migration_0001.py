@@ -356,5 +356,16 @@ class VpnCloud(Element):
 	peers = peers_attr.attribute()
 
 def migrate():
+	from ...elements import Element as El
+	for element in Element.objects.filter(**kwargs)
+		element = element.upcast()
+
+
+		new_element = El.create({
+			"type": element.type,
+			"owner":
+			"parent"
+		})
+
 
 	pass
