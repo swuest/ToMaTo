@@ -61,7 +61,7 @@ class Attribute(object):
 	def set(self, obj, value):
 		self.check(obj, value)
 		if self.setFn:
-			self.setFn(obj, value)
+			self.setFn(obj, init, value)
 		elif self.field:
 			self.field.__set__(obj, value)
 	def get(self, obj):
@@ -97,8 +97,8 @@ class Entity(object):
 	DEFAULT_ATTRIBUTES = {}
 	REMOVE_ACTION = "(remove)"
 
-	save = id = delete = None
-	del save, id, delete
+	save = id = delete = update = None
+	del save, id, delete, update
 
 	@property
 	def type(self):
@@ -110,6 +110,17 @@ class Entity(object):
 		if attrs:
 			toSet.update(attrs)
 		self.modify(**toSet)
+
+	def update_or_save(self, **kwargs):
+		if not self.id:
+			self.save()
+		if not self.__class__.objects.with_id(str(self.id)):
+			self.save()
+		if kwargs:
+			print kwargs
+			self.update(**kwargs)
+		else:
+			self.save()
 
 	def checkUnknownAttribute(self, key, value):
 		raise Error(code=Error.UNSUPPORTED_ATTRIBUTE, message="Unsupported attribute")
@@ -147,7 +158,8 @@ class Entity(object):
 				raise
 		if unknownAttrs:
 			self.setUnknownAttributes(unknownAttrs)
-		self.save()
+		self.update_or_save()
+
 
 	def checkUnknownAction(self, action, params=None):
 		raise Error(code=Error.UNSUPPORTED_ACTION, message="Unsupported action", data={"capabilities": self.capabilities()})
@@ -180,7 +192,7 @@ class Entity(object):
 			raise
 		finally:
 			if action != self.REMOVE_ACTION:
-				self.save()
+				self.update_or_save()
 
 	def remove(self, params=None):
 		self.action(self.REMOVE_ACTION, params)
