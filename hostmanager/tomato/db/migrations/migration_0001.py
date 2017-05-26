@@ -361,11 +361,260 @@ def migrate():
 		element = element.upcast()
 
 
-		new_element = El.create({
-			"type": element.type,
-			"owner":
-			"parent"
-		})
+	userMapping = {}
+	from ...user import User as Us
+	for user in User.objects.filter():
+		newUser = Us(name=user.name)
+		newUser.save()
+		userMapping[user]=newUser
+
+	resourceMapping = {}
+	from ...resources import Resource as Re
+	for resource in Resource.objects.filter():
+		if resource.type not in ["network","template"]:
+			newResource = Re(attrs=resource.attrs,type=resource.type)
+			newResource.save()
+			resourceMapping[resource] = newResource
+
+	templateMapping = {}
+	from ...resources.template import Template as Te
+	for template in Template.objects.filter():
+		newTemplate = Te(attrs=resource.attrs,
+				type=resource.type,
+				owner=userMapping[template.owner],
+				ownerId=userMapping[template.owner].id,
+				tech=template.tech,
+				name=template.name,
+				preference=template.preference,
+				urls=template.urls,
+				checksum=template.checksum,
+				size=template.size,
+				popularity=template.popularity,
+				ready=template.ready,
+				kblang=template.kblang)
+		newTemplate.save()
+		templateMapping[template] = newTemplate
+
+	networkMapping ={}
+	from ...resources.network import Network as Ne
+	for network in Network.objects.filter():
+		newNetwork = Ne(attrs=resource.attrs,
+				type=resource.type,
+				owner=userMapping[network.owner],
+				ownerId=userMapping[network.owner].id,
+				kind=network.kind,
+				bridge=network.bridge,
+				preference=network.preference)
+		networkMapping[network] = newNetwork
+
+	externalNetworkMapping = {}
+	from ...elements.external_network import External_Network as ExNe
+	for externalNetwork in External_Network.objects.filter():
+		newExternalNetwork = ExNe(
+			state=externalNetwork.state,
+			timeout=externalNetwork.timeout,
+			network=networkMapping[externalNetwork.network],
+			networkId=networkMapping[externalNetwork.network].id
+		)
+		externalNetworkMapping[externalNetwork] = newExternalNetwork
+
+		
+	kvmqmMapping = {}
+	from ...elements.kvmqm import KVMQM as New_KVMQM
+	for kvmqm in KVMQM.objects.filter():
+		newKVMQM = New_KVMQM(
+			state=kvmqm.state,
+			timeout=kvmqm.timeout,
+			vmid = kvmqm.vmid,
+			websocket_port = kvmqm.websocket_port,
+			websocket_pid = kvmqm.websocket_pid,
+			vncport = kvmqm.vncport,
+			vncpid = kvmqm.vncpid,
+			vncpassword = kvmqm.vncpassword,
+			cpus = kvmqm.cpus,
+			ram = kvmqm.ram,
+			kblang = kvmqm.kblang,
+			usbtablet = kvmqm.usbtablet,
+			template = kvmqm.template,
+			templateId = kvmqm.templateId
+		)
+		newKVMQM.save()
+		kvmqmMapping[kvmqm] = newKVMQM
+
+	kvmqm_interfaceMapping = {}
+	from ...elements.kvmqm import KVMQM_Interface as KVQM_Interface
+	for kvmqm_interface in KVMQM_Interface.objects.filter():
+		newKVMQMInterface = KVQM_Interface(
+			state=kvmqm_interface.state,
+			timeout=kvmqm_interface.timeout,
+			num=kvmqm_interface.num,
+			name=kvmqm_interface.name,
+			mac=kvmqm_interface.mac,
+			ipspy_pid=kvmqm_interface.ipspy_id,
+			used_addresses=kvmqm_interface.used_addresses
+		)
+		newKVMQMInterface.save()
+		kvmqm_interfaceMapping[kvmqm_interface] = newKVMQMInterface
+
+	kvmMapping = {}
+	from ...elements.kvm import KVM as New_KVM
+	for kvm in KVM.objects.filter():
+		newKVM = New_KVM(
+			state=kvm.state,
+			timeout=kvm.timeout,
+			vmid=kvm.vmid,
+			websocket_port=kvm.websocket_port,
+			websocket_pid=kvm.websocket_pid,
+			vncport=kvm.vncport,
+			vncpid=kvm.vncpid,
+			vncpassword=kvm.vncpassword,
+			cpus=kvm.cpus,
+			ram=kvm.ram,
+			kblang=kvm.kblang,
+			usbtablet=kvm.usbtablet,
+			template=kvm.template,
+			templateId=kvm.templateId
+		)
+		newKVM.save()
+		kvmMapping[kvm] = newKVM
+
+	kvm_interfaceMapping = {}
+	from ...elements.kvm import KVM_Interface as KV_Interface
+	for kvm_interface in KVM.objects.filter():
+		newKVMInterface = KV_Interface(
+			state=kvm_interface.state,
+			timeout=kvm_interface.timeout,
+			num=kvm_interface.num,
+			name=kvm_interface.name,
+			mac=kvm_interface.mac,
+			ipspy_pid=kvm_interface.ipspy_id,
+			used_addresses=kvm_interface.used_addresses
+		)
+		newKVMInterface.save()
+		kvm_interfaceMapping[kvm_interface] = newKVMInterface
+
+	openvzMapping = {}
+	from ...elements.openvz import OpenVZ as New_OpenVZ
+	for openvz in OpenVZ.objects.filter():
+		newOpenVZ = New_OpenVZ(
+			state=openvz.state,
+			timeout=openvz.timeout,
+			vmid=openvz.vmid,
+			websocket_port = openvz.websocket_port,
+			websocket_pid = openvz.websocket_pid,
+			vncport = openvz.vncport,
+			vncpid = openvz.vncpid,
+			vncpassword = openvz.vncpassword,
+			cpus = openvz.cpus,
+			ram = openvz.ram,
+			diskspace = openvz.diskspace,
+			rootpassword = openvz.rootpassword,
+			gateway4 = openvz.gateway4,
+			hostname = openvz.hostname,
+			gateway6 = openvz.gateway6,
+			usbtablet = openvz.usbtablet,
+		)
+		newOpenVZ.save()
+		openvzMapping[openvz] = newOpenVZ
+
+	openvz_interfaceMapping={}
+	from ...elements.openvz import OpenVZ_Interface as New_OpenVZ_Interface
+	for openvz_interface in OpenVZ_Interface.objects.filter():
+		newOpenVz_Interface = New_OpenVZ_Interface(
+				state=openvz_interface.state,
+				timeout=openvz_interface.timeout,
+				name=openvz_interface.name,
+				ip4address=openvz_interface.ip4address,
+				ip6address=openvz_interface.ip6address,
+				use_dhcp=openvz_interface.use_dhcp,
+				mac=openvz_interface.mac,
+				ipspy_pid=openvz_interface.ipspy_pid,
+				used_addresses=openvz_interface.used_addresses
+				)
+		newOpenVz_Interface.save()
+		openvz_interfaceMapping[openvz_interface]=newOpenVz_Interface
+
+	repyMapping={}
+	from ...elements.repy import Repy as RP
+	for repy in Repy.objects.filter():
+		newRepy = RP(
+				state=repy.state,
+				timeout=repy.timeout,
+				pid=repy.pid,
+				websocket_port=repy.websocket_port,
+				websocket_pid=repy.websocket_pid,
+				vncport=repy.vncport,
+				vncpid=repy.vncpid,
+				vncpassword=repy.vncpassword,
+				args=repy.args,
+				args_doc=repy.args_doc,
+				cpus=repy.cpus,
+				ram=repy.ram,
+				bandwidth=repy.bandwidth
+		)
+		newRepy.save()
+		repyMapping[repy] = newRepy
+
+	repy_interfaceMapping={}
+	from ...elements.repy import Repy_Interface as New_Repy_Interface
+	for repy_interface in Repy_Interface.objects.filter():
+		newRepyInterface = New_Repy_Interface(
+			state=repy_interface.state,
+			timeout=repy_interface.timeout,
+			name=repy_interface.name,
+			ipspy_pid=repy_interface.ipspy_pid,
+			used_addresses=repy_interface.used_addresses,
+		)
+		newRepyInterface.save()
+		repy_interfaceMapping[repy_interface] = newRepyInterface
 
 
-	pass
+	tincMapping={}
+	from ...elements.tinc import Tinc as NewTc
+	for tinc in Tinc.objects.filter():
+		newTinc = NewTc(
+			state=tinc.state,
+			timeout=tinc.timeout,
+			port=tinc.port,
+			path=tinc.path,
+			mode=tinc.mode,
+			privkey=tinc.privkey,
+			pubkey=tinc.pubkey,
+			peers=tinc.peers
+		)
+		newTinc.save()
+		tincMapping[tinc] = newTinc
+
+
+	udpTunnelMapping={}
+	from ...elements.udp_tunnel import UDP_Tunnel as NewUDP_Tunnel
+	for udp_tunnel in UDP_Tunnel.objects.filter():
+		newUDP_Tunnel = NewUDP_Tunnel(
+			state=udp_tunnel.state,
+			timeout=udp_tunnel.timeout,
+			pid=udp_tunnel.pid,
+			port=udp_tunnel.port,
+			connect=udp_tunnel.connect
+		)
+		newUDP_Tunnel.save()
+		udpTunnelMapping[udp_tunnel] = newUDP_Tunnel
+
+
+	vpnCloudMapping={}
+	from ...elements.vpncloud import VpnCloud as NewVPNCloud
+	for vpncloud in VpnCloud.objects.filter():
+		newVPNcloud = NewVPNCloud(
+			state=vpncloud.state,
+			timeout=vpncloud.timeout,
+			port=vpncloud.port,
+			pid=vpncloud.pid,
+			network_id=vpncloud.network_id,
+			peers=vpncloud.peers
+		)
+		newVPNcloud.save()
+		vpnCloudMapping[vpncloud] = newVPNcloud
+
+
+	#TODO: Add connection(s) migration
+	#Test everythin once
+	#Add correct referencing of new objects for mongodb
