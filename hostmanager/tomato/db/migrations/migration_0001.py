@@ -355,31 +355,35 @@ class VpnCloud(Element):
 	peers_attr = Attr("peers", desc="Peers", states=[StateName.CREATED], default=[])
 	peers = peers_attr.attribute()
 
-def migrate():
-	from ...elements import Element as El
-	for element in Element.objects.filter(**kwargs)
-		element = element.upcast()
+'''
+Migration through 2 Steps:
+1. Create old elements in the new database with all attributes except for references
+2. Update all elements to integrate the old references and relationships between them.
+'''
 
+def migrate():
+
+	#Create old elements in the new database with all attributes except for references
 
 	userMapping = {}
-	from ...user import User as Us
+	from ...user import User as NewUser
 	for user in User.objects.filter():
-		newUser = Us(name=user.name)
+		newUser = NewUser(name=user.name)
 		newUser.save()
 		userMapping[user]=newUser
 
 	resourceMapping = {}
-	from ...resources import Resource as Re
+	from ...resources import Resource as NewResource
 	for resource in Resource.objects.filter():
 		if resource.type not in ["network","template"]:
-			newResource = Re(attrs=resource.attrs,type=resource.type)
+			newResource = NewResource(attrs=resource.attrs,
+			                          type=resource.type)
 			newResource.save()
 			resourceMapping[resource] = newResource
 
-	templateMapping = {}
-	from ...resources.template import Template as Te
+	from ...resources.template import Template as NewTemplate
 	for template in Template.objects.filter():
-		newTemplate = Te(attrs=resource.attrs,
+		newTemplate = NewTemplate(attrs=resource.attrs,
 				type=resource.type,
 				owner=userMapping[template.owner],
 				ownerId=userMapping[template.owner].id,
@@ -393,36 +397,38 @@ def migrate():
 				ready=template.ready,
 				kblang=template.kblang)
 		newTemplate.save()
-		templateMapping[template] = newTemplate
+		resourceMapping[template] = newTemplate
 
-	networkMapping ={}
-	from ...resources.network import Network as Ne
+	from ...resources.network import Network as NewNetwork
 	for network in Network.objects.filter():
-		newNetwork = Ne(attrs=resource.attrs,
+		newNetwork = NewNetwork(attrs=resource.attrs,
 				type=resource.type,
 				owner=userMapping[network.owner],
 				ownerId=userMapping[network.owner].id,
 				kind=network.kind,
 				bridge=network.bridge,
 				preference=network.preference)
-		networkMapping[network] = newNetwork
+		resourceMapping[network] = newNetwork
 
-	externalNetworkMapping = {}
-	from ...elements.external_network import External_Network as ExNe
+	elementMapping = {}
+	from ...elements.external_network import External_Network as NewExternalNetwork
 	for externalNetwork in External_Network.objects.filter():
-		newExternalNetwork = ExNe(
+		newExternalNetwork = NewExternalNetwork(
+			owner=userMapping[externalNetwork.owner],
+			ownerId = userMapping[externalNetwork.owner].id,
 			state=externalNetwork.state,
 			timeout=externalNetwork.timeout,
-			network=networkMapping[externalNetwork.network],
-			networkId=networkMapping[externalNetwork.network].id
+			network=resourceMapping[externalNetwork.network],
+			networkId=resourceMapping[externalNetwork.network].id
 		)
-		externalNetworkMapping[externalNetwork] = newExternalNetwork
+		elementMapping[externalNetwork] = newExternalNetwork
 
 		
-	kvmqmMapping = {}
 	from ...elements.kvmqm import KVMQM as New_KVMQM
 	for kvmqm in KVMQM.objects.filter():
 		newKVMQM = New_KVMQM(
+			owner=userMapping[kvmqm.owner],
+			ownerId = userMapping[kvmqm.owner].id,
 			state=kvmqm.state,
 			timeout=kvmqm.timeout,
 			vmid = kvmqm.vmid,
@@ -435,16 +441,17 @@ def migrate():
 			ram = kvmqm.ram,
 			kblang = kvmqm.kblang,
 			usbtablet = kvmqm.usbtablet,
-			template = kvmqm.template,
-			templateId = kvmqm.templateId
+			template = resourceMapping[kvmqm.template],
+			templateId = resourceMapping[kvmqm.template].id
 		)
 		newKVMQM.save()
-		kvmqmMapping[kvmqm] = newKVMQM
+		elementMapping[kvmqm] = newKVMQM
 
-	kvmqm_interfaceMapping = {}
 	from ...elements.kvmqm import KVMQM_Interface as KVQM_Interface
 	for kvmqm_interface in KVMQM_Interface.objects.filter():
 		newKVMQMInterface = KVQM_Interface(
+			owner=userMapping[kvmqm_interface.owner],
+			ownerId=userMapping[kvmqm_interface.owner].id,
 			state=kvmqm_interface.state,
 			timeout=kvmqm_interface.timeout,
 			num=kvmqm_interface.num,
@@ -454,12 +461,13 @@ def migrate():
 			used_addresses=kvmqm_interface.used_addresses
 		)
 		newKVMQMInterface.save()
-		kvmqm_interfaceMapping[kvmqm_interface] = newKVMQMInterface
+		elementMapping[kvmqm_interface] = newKVMQMInterface
 
-	kvmMapping = {}
 	from ...elements.kvm import KVM as New_KVM
 	for kvm in KVM.objects.filter():
 		newKVM = New_KVM(
+			owner=userMapping[kvm.owner],
+			ownerId = userMapping[kvm.owner].id,
 			state=kvm.state,
 			timeout=kvm.timeout,
 			vmid=kvm.vmid,
@@ -472,16 +480,17 @@ def migrate():
 			ram=kvm.ram,
 			kblang=kvm.kblang,
 			usbtablet=kvm.usbtablet,
-			template=kvm.template,
-			templateId=kvm.templateId
+			template = resourceMapping[kvm.template],
+			templateId = resourceMapping[kvm.template].id
 		)
 		newKVM.save()
-		kvmMapping[kvm] = newKVM
+		elementMapping[kvm] = newKVM
 
-	kvm_interfaceMapping = {}
 	from ...elements.kvm import KVM_Interface as KV_Interface
 	for kvm_interface in KVM.objects.filter():
 		newKVMInterface = KV_Interface(
+			owner=userMapping[kvm_interface.owner],
+			ownerId=userMapping[kvm_interface.owner].id,
 			state=kvm_interface.state,
 			timeout=kvm_interface.timeout,
 			num=kvm_interface.num,
@@ -491,12 +500,13 @@ def migrate():
 			used_addresses=kvm_interface.used_addresses
 		)
 		newKVMInterface.save()
-		kvm_interfaceMapping[kvm_interface] = newKVMInterface
+		elementMapping[kvm_interface] = newKVMInterface
 
-	openvzMapping = {}
 	from ...elements.openvz import OpenVZ as New_OpenVZ
 	for openvz in OpenVZ.objects.filter():
 		newOpenVZ = New_OpenVZ(
+			owner=userMapping[openvz.owner],
+			ownerId=userMapping[openvz.owner].id,
 			state=openvz.state,
 			timeout=openvz.timeout,
 			vmid=openvz.vmid,
@@ -512,15 +522,17 @@ def migrate():
 			gateway4 = openvz.gateway4,
 			hostname = openvz.hostname,
 			gateway6 = openvz.gateway6,
-			usbtablet = openvz.usbtablet,
+			template = resourceMapping[openvz.template],
+			templateId = resourceMapping[openvz.template].id
 		)
 		newOpenVZ.save()
-		openvzMapping[openvz] = newOpenVZ
+		elementMapping[openvz] = newOpenVZ
 
-	openvz_interfaceMapping={}
 	from ...elements.openvz import OpenVZ_Interface as New_OpenVZ_Interface
 	for openvz_interface in OpenVZ_Interface.objects.filter():
 		newOpenVz_Interface = New_OpenVZ_Interface(
+				owner=userMapping[openvz_interface.owner],
+				ownerId=userMapping[openvz_interface.owner].id,
 				state=openvz_interface.state,
 				timeout=openvz_interface.timeout,
 				name=openvz_interface.name,
@@ -532,12 +544,13 @@ def migrate():
 				used_addresses=openvz_interface.used_addresses
 				)
 		newOpenVz_Interface.save()
-		openvz_interfaceMapping[openvz_interface]=newOpenVz_Interface
+		elementMapping[openvz_interface]=newOpenVz_Interface
 
-	repyMapping={}
 	from ...elements.repy import Repy as RP
 	for repy in Repy.objects.filter():
 		newRepy = RP(
+				owner=userMapping[repy.owner],
+				ownerId=userMapping[repy.owner].id,
 				state=repy.state,
 				timeout=repy.timeout,
 				pid=repy.pid,
@@ -547,18 +560,20 @@ def migrate():
 				vncpid=repy.vncpid,
 				vncpassword=repy.vncpassword,
 				args=repy.args,
-				args_doc=repy.args_doc,
 				cpus=repy.cpus,
 				ram=repy.ram,
-				bandwidth=repy.bandwidth
+				bandwidth=repy.bandwidth,
+				template = resourceMapping[repy.template],
+				templateId = resourceMapping[repy.template].id
 		)
 		newRepy.save()
-		repyMapping[repy] = newRepy
+		elementMapping[repy] = newRepy
 
-	repy_interfaceMapping={}
 	from ...elements.repy import Repy_Interface as New_Repy_Interface
 	for repy_interface in Repy_Interface.objects.filter():
 		newRepyInterface = New_Repy_Interface(
+			owner=userMapping[repy_interface.owner],
+			ownerId = userMapping[repy_interface.owner].id,
 			state=repy_interface.state,
 			timeout=repy_interface.timeout,
 			name=repy_interface.name,
@@ -566,13 +581,14 @@ def migrate():
 			used_addresses=repy_interface.used_addresses,
 		)
 		newRepyInterface.save()
-		repy_interfaceMapping[repy_interface] = newRepyInterface
+		elementMapping[repy_interface] = newRepyInterface
 
 
-	tincMapping={}
 	from ...elements.tinc import Tinc as NewTc
 	for tinc in Tinc.objects.filter():
 		newTinc = NewTc(
+			owner=userMapping[tinc.owner],
+			ownerId = userMapping[tinc.owner].id,
 			state=tinc.state,
 			timeout=tinc.timeout,
 			port=tinc.port,
@@ -583,13 +599,14 @@ def migrate():
 			peers=tinc.peers
 		)
 		newTinc.save()
-		tincMapping[tinc] = newTinc
+		elementMapping[tinc] = newTinc
 
 
-	udpTunnelMapping={}
 	from ...elements.udp_tunnel import UDP_Tunnel as NewUDP_Tunnel
 	for udp_tunnel in UDP_Tunnel.objects.filter():
 		newUDP_Tunnel = NewUDP_Tunnel(
+			owner=userMapping[udp_tunnel.owner],
+			ownerId=userMapping[udp_tunnel.owner].id,
 			state=udp_tunnel.state,
 			timeout=udp_tunnel.timeout,
 			pid=udp_tunnel.pid,
@@ -597,13 +614,14 @@ def migrate():
 			connect=udp_tunnel.connect
 		)
 		newUDP_Tunnel.save()
-		udpTunnelMapping[udp_tunnel] = newUDP_Tunnel
+		elementMapping[udp_tunnel] = newUDP_Tunnel
 
 
-	vpnCloudMapping={}
 	from ...elements.vpncloud import VpnCloud as NewVPNCloud
 	for vpncloud in VpnCloud.objects.filter():
 		newVPNcloud = NewVPNCloud(
+			owner=userMapping[vpncloud.owner],
+			ownerId=userMapping[vpncloud.owner].id,
 			state=vpncloud.state,
 			timeout=vpncloud.timeout,
 			port=vpncloud.port,
@@ -612,9 +630,239 @@ def migrate():
 			peers=vpncloud.peers
 		)
 		newVPNcloud.save()
-		vpnCloudMapping[vpncloud] = newVPNcloud
+		elementMapping[vpncloud] = newVPNcloud
 
 
-	#TODO: Add connection(s) migration
+	connectionMapping={}
+	from ...connections.bridge import Bridge as NewBridge
+	for bridge in Bridge.objects.filte():
+		newBridge = NewBridge(
+			owner=userMapping[bridge.owner],
+			ownerId = userMapping[bridge.owner].id,
+			state = bridge.state,
+			bridge= bridge.bridge,
+			emulation = bridge.emulation,
+			bandwidth_to = bridge.bandwidth_to,
+			bandwidth_from = bridge.bandwidth_from,
+			lossratio_to = bridge.lossratio_to,
+			lossratio_from = bridge.lossratio_from,
+			duplicate_to = bridge.duplicate_to,
+			duplicate_from = bridge.duplicate_from,
+			corrupt_to = bridge.corrupt_to,
+			corrupt_from = bridge.corrupt_from,
+			delay_to = bridge.delay_to,
+			delay_from = bridge.delay_from,
+			jitter_to = bridge.jitter_to,
+			jitter_from = bridge.jitter_from,
+			distribution_to = bridge.distribution_to,
+			distribution_from = bridge.distribution_from,
+			capturing = bridge.capturing,
+			capture_filter = bridge.capture_filter,
+			capture_port = bridge.capture_port,
+			capture_mode = bridge.capture_mode,
+			capture_pid = bridge.capture_pid)
+		newBridge.save()
+		connectionMapping[bridge] = newBridge
+
+	from ...connections.fixed_bridge import Fixed_Bridge as NewFixedBridge
+	for fixedBridge in Fixed_Bridge.objects.filter():
+		newFixedBridge = NewFixedBridge(
+			owner=userMapping[fixedBridge.owner],
+			ownerId = userMapping[fixedBridge.owner].id,
+			state = fixedBridge.state)
+		newFixedBridge.save()
+		connectionMapping[fixedBridge]=newFixedBridge
+
+	usageStatisticsMapping={}
+	from ...accounting import UsageStatistics as NewUsageStatistics
+	for usageStatistic in UsageStatistics.objects.filter():
+		newUsageStatistic = NewUsageStatistics(
+			begin =usageStatistic.begin,
+			attrs=usageStatistic.attrs
+		)
+		newUsageStatistic.save()
+		usageStatisticsMapping[usageStatistic] = newUsageStatistic
+
+	usageRecordMapping={}
+	from ...accounting import UsageRecord as NewUsageRecord
+	for usageRecord in UsageRecord.objects.filter():
+		newUsageRecord = NewUsageRecord(
+			statistics=usageStatisticsMapping[usageRecord.statistics],
+			type=usageRecord.type,
+			begin=usageRecord.begin,
+			end=usageRecord.end,
+			measurements=usageRecord.measurements,
+			memory=usageRecord.memory,
+			diskspace=usageRecord.diskspace,
+			traffic=usageRecord.traffic,
+			cputime=usageRecord.cputime
+		)
+		newUsageRecord.save()
+		usageRecordMapping[usageRecord]=newUsageRecord
+
+	resourceInstanceMapping={}
+	from ...resources import ResourceInstance as NewResourceInstance
+	for resourceInstance in ResourceInstance.objects.filter():
+		newResourceInstance = NewResourceInstance(
+			type=resourceInstance.type,
+			num=resourceInstance.num,
+			ownerElement=elementMapping(resourceInstance.ownerElement),
+			ownerElementId=elementMapping(resourceInstance.ownerElement).id,
+			ownerConnection=connectionMapping(resourceInstance.ownerConnection),
+			ownerConnectionId=connectionMapping(resourceInstance.ownerConnection).id,
+			attrs=resourceInstance.attrs
+		)
+
+
+
+	#Update all elements to integrate the old references and relationships between them.
+
+	for externalNetwork in External_Network.objects.filter():
+		newExternalNetwork= elementMapping[externalNetwork]
+		newExternalNetwork.parent = elementMapping[externalNetwork.parent]
+		newExternalNetwork.parentId = elementMapping[externalNetwork.parent].id
+		newExternalNetwork.connection = connectionMapping[externalNetwork.connection]
+		newExternalNetwork.connectionId = connectionMapping[externalNetwork.connection].id
+		newExternalNetwork.usageStatistics = usageStatisticsMapping[externalNetwork.usageStatistic]
+		newExternalNetwork.usageStatisticsId = usageStatisticsMapping[externalNetwork.usageStatistic].id
+		newExternalNetwork.save()
+
+	for kvmqm in KVMQM.objects.filter():
+		newKVMQM = elementMapping[kvmqm]
+		newKVMQM.parent = elementMapping[kvmqm.parent]
+		newKVMQM.parentId = elementMapping[kvmqm.parent].id
+		newKVMQM.connection = connectionMapping[kvmqm.connection]
+		newKVMQM.connectionId = connectionMapping[kvmqm.connection].id
+		newKVMQM.usageStatistics = usageStatisticsMapping[kvmqm.usageStatistic]
+		newKVMQM.usageStatisticsId = usageStatisticsMapping[kvmqm.usageStatistic].id
+		newKVMQM.save()
+
+	for kvmqm_interface in KVMQM_Interface.objects.filter():
+		newKVMQM_Interface = elementMapping[kvmqm_interface]
+		newKVMQM_Interface.parent = elementMapping[kvmqm_interface.parent]
+		newKVMQM_Interface.parentId = elementMapping[kvmqm_interface.parent].id
+		newKVMQM_Interface.connection = connectionMapping[kvmqm_interface.connection]
+		newKVMQM_Interface.connectionId = connectionMapping[kvmqm_interface.connection].id
+		newKVMQM_Interface.usageStatistics = usageStatisticsMapping[kvmqm_interface.usageStatistic]
+		newKVMQM_Interface.usageStatisticsId = usageStatisticsMapping[kvmqm_interface.usageStatistic].id
+		newKVMQM_Interface.save()
+
+
+	for kvm in KVM.objects.filter():
+		newKVM = elementMapping[kvm]
+		newKVM.parent = elementMapping[kvm.parent]
+		newKVM.parentId = elementMapping[kvm.parent].id
+		newKVM.connection = connectionMapping[kvm.connection]
+		newKVM.connectionId = connectionMapping[kvm.connection].id
+		newKVM.usageStatistics = usageStatisticsMapping[kvm.usageStatistic]
+		newKVM.usageStatisticsId = usageStatisticsMapping[kvm.usageStatistic].id
+		newKVM.save()
+
+	for kvm_interface in KVM_Interface.objects.filter():
+		newKVM_Interface = elementMapping[kvm_interface]
+		newKVM_Interface.parent = elementMapping[kvm_interface.parent]
+		newKVM_Interface.parentId = elementMapping[kvm_interface.parent].id
+		newKVM_Interface.connection = connectionMapping[kvm_interface.connection]
+		newKVM_Interface.connectionId = connectionMapping[kvm_interface.connection].id
+		newKVM_Interface.usageStatistics = usageStatisticsMapping[kvm_interface.usageStatistic]
+		newKVM_Interface.usageStatisticsId = usageStatisticsMapping[kvm_interface.usageStatistic].id
+		newKVM_Interface.save()
+
+	for openvz in OpenVZ.objects.filter():
+		newOpenVZ = elementMapping[openvz]
+		newOpenVZ.parent = elementMapping[openvz.parent]
+		newOpenVZ.parentId = elementMapping[openvz.parent].id
+		newOpenVZ.connection = connectionMapping[openvz.connection]
+		newOpenVZ.connectionId = connectionMapping[openvz.connection].id
+		newOpenVZ.usageStatistics = usageStatisticsMapping[openvz.usageStatistic]
+		newOpenVZ.usageStatisticsId = usageStatisticsMapping[openvz.usageStatistic].id
+		newOpenVZ.save()
+
+	for openvz_interface in OpenVZ_Interface.objects.filter():
+		newOpenVZ_Interface = elementMapping[openvz_interface]
+		newOpenVZ_Interface.parent = elementMapping[openvz_interface.parent]
+		newOpenVZ_Interface.parentId = elementMapping[openvz_interface.parent].id
+		newOpenVZ_Interface.connection = connectionMapping[openvz_interface.connection]
+		newOpenVZ_Interface.connectionId = connectionMapping[openvz_interface.connection].id
+		newOpenVZ_Interface.usageStatistics = usageStatisticsMapping[openvz_interface.usageStatistic]
+		newOpenVZ_Interface.usageStatisticsId = usageStatisticsMapping[openvz_interface.usageStatistic].id
+		newOpenVz_Interface.save()
+
+
+	for repy in Repy.objects.filter():
+		newRepy = elementMapping[repy]
+		newRepy.parent = elementMapping[repy.parent]
+		newRepy.parentId = elementMapping[repy.parent].id
+		newRepy.connection = connectionMapping[repy.connection]
+		newRepy.connectionId = connectionMapping[repy.connection].id
+		newRepy.usageStatistics = usageStatisticsMapping[repy.usageStatistic]
+		newRepy.usageStatisticsId = usageStatisticsMapping[repy.usageStatistic].id
+		newRepy.save()
+
+	for repy_interface in Repy_Interface.objects.filter():
+		newRepy_Interface = elementMapping[repy_interface]
+		newRepy_Interface.parent = elementMapping[repy_interface.parent]
+		newRepy_Interface.parentId = elementMapping[repy_interface.parent].id
+		newRepy_Interface.connection = connectionMapping[repy_interface.connection]
+		newRepy_Interface.connectionId = connectionMapping[repy_interface.connection].id
+		newRepy_Interface.usageStatistics = usageStatisticsMapping[repy_interface.usageStatistic]
+		newRepy_Interface.usageStatisticsId = usageStatisticsMapping[repy_interface.usageStatistic].id
+		newRepy_Interface.save()
+
+	for tinc in Tinc.objects.filter():
+		newTinc = elementMapping[tinc]
+		newTinc.parent = elementMapping[tinc.parent]
+		newTinc.parentId = elementMapping[tinc.parent].id
+		newTinc.connection = connectionMapping[tinc.connection]
+		newTinc.connectionId = connectionMapping[tinc.connection].id
+		newTinc.usageStatistics = usageStatisticsMapping[tinc.usageStatistic]
+		newTinc.usageStatisticsId = usageStatisticsMapping[tinc.usageStatistic].id
+		newTinc.save()
+
+	for udp_tunnel in UDP_Tunnel.objects.filter():
+		newUDP_Tunnel = elementMapping[udp_tunnel]
+		newUDP_Tunnel.parent = elementMapping[udp_tunnel.parent]
+		newUDP_Tunnel.parentId = elementMapping[udp_tunnel.parent].id
+		newUDP_Tunnel.connection = connectionMapping[udp_tunnel.connection]
+		newUDP_Tunnel.connectionId = connectionMapping[udp_tunnel.connection].id
+		newUDP_Tunnel.usageStatistics = usageStatisticsMapping[udp_tunnel.usageStatistic]
+		newUDP_Tunnel.usageStatisticsId = usageStatisticsMapping[udp_tunnel.usageStatistic].id
+		newUDP_Tunnel.save()
+
+	for vpncloud in VpnCloud.objects.filter():
+		newVpnCloud = elementMapping[vpncloud]
+		newVpnCloud.parent = elementMapping[vpncloud.parent]
+		newVpnCloud.parentId = elementMapping[vpncloud.parent].id
+		newVpnCloud.connection = connectionMapping[vpncloud.connection]
+		newVpnCloud.connectionId = connectionMapping[vpncloud.connection].id
+		newVpnCloud.usageStatistics = usageStatisticsMapping[vpncloud.usageStatistic]
+		newVpnCloud.usageStatisticsId = usageStatisticsMapping[vpncloud.usageStatistic].id
+		newVpnCloud.save()
+
+	for bridge in Bridge.objects.filter():
+		newBridge = connectionMapping[bridge]
+		newBridge.usageStatistics = usageStatisticsMapping[bridge.usageStatistic]
+		newBridge.usageStatisticsId = usageStatisticsMapping[bridge.usageStatistic].id
+
+		eleList=[]
+		for element in bridge.elements:
+			eleList.append(elementMapping[element])
+		newBridge.elements = eleList
+		newBridge.save()
+
+	for fixed_bridge in Fixed_Bridge.objects.filter():
+		newFixedBridge = connectionMapping[fixed_bridge]
+		newFixedBridge.usageStatistics = usageStatisticsMapping[fixed_bridge.usageStatistic]
+		newFixedBridge.usageStatisticsId = usageStatisticsMapping[fixed_bridge.usageStatistic].id
+
+		eleList = []
+		for element in fixed_bridge.elements:
+			eleList.append(elementMapping[element])
+		newFixedBridge.elements = eleList
+		newFixedBridge.save()
+
+
+
+		#TODO: Add connection(s) migration
 	#Test everythin once
 	#Add correct referencing of new objects for mongodb
