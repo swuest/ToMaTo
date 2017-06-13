@@ -526,7 +526,6 @@ class KVMQM_Interface(elements.Element):
 
 
 	num = IntField()
-	name = StringField()
 	mac = StringField()
 	ipspy_pid = IntField()
 	used_addresses = ListField(default=[])
@@ -600,7 +599,6 @@ class KVMQM_Interface(elements.Element):
 		"num": Attribute(field=num, schema=schema.Int(), readOnly=True),
 		"mac": Attribute(field=mac, description="Mac Address", schema=schema.String(), readOnly=True),
 		"ipspy_id": Attribute(field=ipspy_pid, schema=schema.Int(), readOnly=True),
-		"name": Attribute(field=name, description="Name", schema=schema.String(regex="^eth[0-9]+$")),
 		"used_addresses": Attribute(field=used_addresses, schema=schema.List(), default=[], readOnly=True),
 	})
 
